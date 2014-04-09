@@ -1,0 +1,32 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dibf", "dibf\dibf.vcxproj", "{E1847B66-B223-448D-A82F-0399A13404F1}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "iocode", "iocode\iocode.vcxproj", "{85132FDA-B11C-412E-8FC7-E7305F2A853C}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "iosend", "iosend\iosend.vcxproj", "{BE018FB2-6765-4760-868A-9E97C51D7B65}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E1847B66-B223-448D-A82F-0399A13404F1}.Debug|Win32.ActiveCfg = Debug|Win32
+		{E1847B66-B223-448D-A82F-0399A13404F1}.Debug|Win32.Build.0 = Debug|Win32
+		{E1847B66-B223-448D-A82F-0399A13404F1}.Release|Win32.ActiveCfg = Release|Win32
+		{E1847B66-B223-448D-A82F-0399A13404F1}.Release|Win32.Build.0 = Release|Win32
+		{85132FDA-B11C-412E-8FC7-E7305F2A853C}.Debug|Win32.ActiveCfg = Debug|Win32
+		{85132FDA-B11C-412E-8FC7-E7305F2A853C}.Debug|Win32.Build.0 = Debug|Win32
+		{85132FDA-B11C-412E-8FC7-E7305F2A853C}.Release|Win32.ActiveCfg = Release|Win32
+		{85132FDA-B11C-412E-8FC7-E7305F2A853C}.Release|Win32.Build.0 = Release|Win32
+		{BE018FB2-6765-4760-868A-9E97C51D7B65}.Debug|Win32.ActiveCfg = Debug|Win32
+		{BE018FB2-6765-4760-868A-9E97C51D7B65}.Debug|Win32.Build.0 = Debug|Win32
+		{BE018FB2-6765-4760-868A-9E97C51D7B65}.Release|Win32.ActiveCfg = Release|Win32
+		{BE018FB2-6765-4760-868A-9E97C51D7B65}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
