@@ -459,12 +459,11 @@ DWORD WINAPI Iocallback(PVOID Parameter)
                 // This thread will send signals to all others
                 if(pOvrlp==SPECIAL_OVERLAPPED_BAIL_ALL) {
                     tbail = TRUE;
+                    gotRequest = FALSE;
                     TPRINT(LEVEL_INFO, L"TID[%x]: RECEIVED TERMINATION SIGNAL\n", GetCurrentThreadId());
                     for(UINT i=0; i<startingNbThreads-1; i++) {
                         // Since this thread will never dequeue again, it will never receive both SPECIAL_OVELRAPPEDS
-                        // ... unless all other threads exited already meaning all SPECIAL_OVERLAPPED_BAIL have been dequeued already :)
                         PostQueuedCompletionStatus(hIocp, 0, 0, SPECIAL_OVERLAPPED_BAIL);
-                        gotRequest = FALSE;
                     }
                 }
                 else {

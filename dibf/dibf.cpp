@@ -639,7 +639,7 @@ VOID usage(void)
     TPRINT(LEVEL_ALWAYS_PRINT, L" dibf <options> <device name>\n");
     TPRINT(LEVEL_ALWAYS_PRINT, L"Options:\n");
     TPRINT(LEVEL_ALWAYS_PRINT, L" -h You're looking at it\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L" -i Ignore previous logfile - THIS WILL OVERWRITE IT\n");
+    TPRINT(LEVEL_ALWAYS_PRINT, L" -i Ignore (OVERWRITE) previous logfile\n");
     TPRINT(LEVEL_ALWAYS_PRINT, L" -d Deep IOCTL bruteforce (8-9 times slower)\n");
     TPRINT(LEVEL_ALWAYS_PRINT, L" -v [0-3] Verbosity level\n");
     TPRINT(LEVEL_ALWAYS_PRINT, L" -s [ioctl] Start IOCTL value\n");
