@@ -7,7 +7,7 @@
 
 // Printing macro (bad nico)
 #define TPRINT(verbose, format, ...) \
-    if (verbose<=g_verbose) { \
+    if ((LONG)verbose<=(LONG)g_verbose) { \
         _tprintf(format, __VA_ARGS__); \
     }
 // Verbosity levels

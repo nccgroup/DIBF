@@ -428,7 +428,7 @@ DWORD WINAPI Iocallback(PVOID Parameter)
     LPOVERLAPPED pOvrlp;
     PIOCTL_REQUEST request=NULL;
     PTRACKER pTracker;
-    PASYNC_CONFIG pAsync_config = PASYNC_CONFIG(Parameter);
+    PASYNC_CONFIG pAsync_config = (PASYNC_CONFIG)Parameter;
 
     // Init from config struct
     hDev = pAsync_config->hDev;
