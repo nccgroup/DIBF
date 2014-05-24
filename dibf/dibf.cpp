@@ -104,7 +104,7 @@ HANDLE DoAllBruteForce(PTSTR pDeviceName, DWORD dwIOCTLStart, DWORD dwIOCTLEnd, 
 {
     HANDLE hDevice;
 
-    hDevice = CreateFile(pDeviceName, GENERIC_READ|GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+    hDevice = CreateFile(pDeviceName, MAXIMUM_ALLOWED, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
     if(hDevice!=INVALID_HANDLE_VALUE) {
         //Bruteforce IOCTLs
         TPRINT(LEVEL_ALWAYS_PRINT, L"<< Bruteforcing IOCTLs >>\n");
@@ -271,7 +271,7 @@ int _tmain(int argc, _TCHAR* argv[])
     if(validUsage && (bResultsFromFile || gotDeviceName)) {
         // Open the device based on the file name read from file
         if(bResultsFromFile) {
-            hDevice = CreateFile(pDeviceName, GENERIC_READ|GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+            hDevice = CreateFile(pDeviceName, MAXIMUM_ALLOWED, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
             if(hDevice==INVALID_HANDLE_VALUE) {
                 TPRINT(LEVEL_ERROR, L"Error opening device %s, error %d\n", pDeviceName, GetLastError());
             }
