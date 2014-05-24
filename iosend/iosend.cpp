@@ -52,7 +52,7 @@ int _tmain(int argc, _TCHAR* argv[])
         inlen = _tcstoul(argv[4], &stop, 0);
         outlen = _tcstoul(argv[5], &stop, 0);
         // Open device
-        hDev = CreateFile(argv[1], GENERIC_READ|GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+        hDev = CreateFile(argv[1], MAXIMUM_ALLOWED, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
         if(hDev != INVALID_HANDLE_VALUE) {
             TPRINTF(L"Device file %s opened successfully\n", argv[1]);
             if(inlen) {

@@ -2,7 +2,7 @@
 
 #include "stdafx.h"
 
-#define FUNCTION_FROM_CTL_CODE(ctrlCode) (((DWORD)(ctrlCode & 0x1FFC)) >> 2)
+#define FUNCTION_FROM_CTL_CODE(ctrlCode) (((DWORD)(ctrlCode & 0x3FFC)) >> 2)
 #define ACCESS_FROM_CTL_CODE(ctrlCode) (((DWORD)(ctrlCode & 0xC000)) >> 14)
 
 typedef struct _TABLE
@@ -144,22 +144,24 @@ int _tmain(int argc, _TCHAR* argv[])
     TCHAR *stop;
 
     // Check # of args
-    if(argc == 2) {
+    switch(argc) {
+    case 2:
         iocode = _tcstoul(argv[1], &stop, 0);
         devicetype = DEVICE_TYPE_FROM_CTL_CODE(iocode);
         function = FUNCTION_FROM_CTL_CODE(iocode);
         method = METHOD_FROM_CTL_CODE(iocode);
         access = ACCESS_FROM_CTL_CODE(iocode);
-        _tprintf(L"DECODING IOCODE 0x%x:\ndevice type = %s\nfunction = 0x%x\nmethod = %s\naccess = %s\n",
+        _tprintf(L"DECODING IOCODE %#.8x:\ndevice type = %#x %s (%s)\nfunction = %#x (%s)\nmethod = %s\naccess = %s\n",
             iocode,
+            devicetype,
             devicetype>maxdevtype ? L"UNKNOWN" : device_type_string[devicetype],
+            devicetype&0x8000 ? L"VENDOR" : L"MS",
             function,
+            function&0x800 ? L"VENDOR" : L"MS",
             method>maxmethod ? L"INVALID" : method_string[method],
             access>maxaccess ? L"INVALID" : access_string[access]);
-        return 0;
-    }
-
-    if(argc == 5) {
+        break;
+    case 5:
         devicetype = GetIndex(argv[1], &device_type_table);
         function = _tcstoul(argv[2], &stop, 0);
         if(function>0xfff) {
@@ -168,9 +170,11 @@ int _tmain(int argc, _TCHAR* argv[])
         }
         method = GetIndex(argv[3], &method_table);
         access = GetIndex(argv[4], &access_table);
-        _tprintf(L"ENCODED IOCODE 0x%x", CTL_CODE(devicetype, function, method, access));
-        return 0;
+        _tprintf(L"ENCODED IOCODE %#.8x", CTL_CODE(devicetype, function, method, access));
+        break;
+    default:
+        _tprintf(L"USAGE: %s [IOCODE]\nor\n%s [DEVICE_TYPE] [FUNCTION] [METHOD] [ACCESS]", argv[0], argv[0]);
+        break;
     }
-    _tprintf(L"USAGE: %s [IOCODE]\nor\n%s [DEVICE_TYPE] [FUNCTION] [METHOD] [ACCESS]", argv[0], argv[0]);
     return 0;
 }
