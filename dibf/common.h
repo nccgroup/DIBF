@@ -37,3 +37,6 @@ typedef struct _TRACKER{
 
 // Globals
 extern ULONG g_verbose;
+
+// Functions
+VOID PrintVerboseError(ULONG, DWORD);

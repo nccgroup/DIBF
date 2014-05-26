@@ -347,32 +347,39 @@ DWORD BruteForceIOCTLs(HANDLE hDevice, PIOCTL_STORAGE pIOCTLStorage, DWORD dwIOC
 //
 BOOL __inline CallDeviceIoControl(HANDLE hDevice, DWORD dwIOCTL, BOOL bDeepBruteForce)
 {
-    DWORD dwBytesReturned,dwError,dwSize;
+    BOOL bRet=FALSE;
+    DWORD dwBytesReturned, dwError, dwSize;
     BYTE bDummyBuffer[DUMMY_SIZE] = {};
 
     if(bDeepBruteForce) {
-        for(dwSize=0; dwSize<=DEEP_BF_MAX; dwSize+=4) {
+        for(dwSize=0; !bRet&&dwSize<=DEEP_BF_MAX; dwSize+=4) {
             if(DeviceIoControl(hDevice, dwIOCTL, bDummyBuffer, dwSize, bDummyBuffer, DUMMY_SIZE, &dwBytesReturned, NULL)) {
-                return TRUE;
+                bRet = TRUE;
             }
             else {
                 dwError = GetLastError();
                 if((dwError!=ERROR_INVALID_FUNCTION) && (dwError!=ERROR_NOT_SUPPORTED)) {
-                    return TRUE;
+                    bRet = TRUE;
                 }
             }
         }
     }
-    if(DeviceIoControl(hDevice, dwIOCTL, bDummyBuffer, DUMMY_SIZE, bDummyBuffer, DUMMY_SIZE, &dwBytesReturned, NULL)) {
-        return TRUE;
-    }
     else {
-        dwError = GetLastError();
-        if((dwError != ERROR_INVALID_FUNCTION) && (dwError != ERROR_NOT_SUPPORTED)) {
-            return TRUE;
+        if(DeviceIoControl(hDevice, dwIOCTL, bDummyBuffer, DUMMY_SIZE, bDummyBuffer, DUMMY_SIZE, &dwBytesReturned, NULL)) {
+            bRet = TRUE;
+        }
+        else {
+            dwError = GetLastError();
+            if((dwError != ERROR_INVALID_FUNCTION) && (dwError != ERROR_NOT_SUPPORTED)) {
+                bRet = TRUE;
+            }
+        }
+        if(!bRet){
+            TPRINT(LEVEL_INFO, L"IOCTL %#.8x returned ", dwIOCTL);
+            PrintVerboseError(LEVEL_INFO, dwError);
         }
     }
-    return FALSE;
+    return bRet;
 }
 
 //DESCRIPTION:
