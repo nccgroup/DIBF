@@ -110,11 +110,12 @@ TABLE method_table = {method_string, maxmethod};
 const TCHAR* access_string[] = {
     L"FILE_ANY_ACCESS",
     //L"FILE_SPECIAL_ACCESS", // SKIPPING AS IT IS EQUAL TO FILE_ANY_ACCESS (0)
-    L"FILE_READ_ACCESS",
-    L"FILE_WRITE_ACCESS",
+    L"FILE_READ_DATA",
+    L"FILE_WRITE_DATA",
+    L"FILE_READ_WRITE_DATA",
     NULL
 };
-const ULONG maxaccess = 0x2;
+const ULONG maxaccess = 0x3;
 TABLE access_table = {access_string, maxaccess};
 
 UINT GetIndex(TCHAR* str, TABLE *table)
@@ -158,8 +159,8 @@ int _tmain(int argc, _TCHAR* argv[])
             devicetype&0x8000 ? L"VENDOR" : L"MS",
             function,
             function&0x800 ? L"VENDOR" : L"MS",
-            method>maxmethod ? L"INVALID" : method_string[method],
-            access>maxaccess ? L"INVALID" : access_string[access]);
+            method_string[method],
+            access_string[access]);
         break;
     case 5:
         devicetype = GetIndex(argv[1], &device_type_table);
