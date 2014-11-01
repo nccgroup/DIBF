@@ -349,7 +349,7 @@ DWORD BruteForceIOCTLs(HANDLE hDevice, PIOCTL_STORAGE pIOCTLStorage, DWORD dwIOC
 BOOL __inline CallDeviceIoControl(HANDLE hDevice, DWORD dwIOCTL, BOOL bDeepBruteForce)
 {
     BOOL bRet=FALSE;
-    DWORD dwBytesReturned, dwError, dwSize;
+    DWORD dwBytesReturned, dwError=ERROR_SUCCESS, dwSize;
     BYTE bDummyBuffer[DUMMY_SIZE] = {};
 
     if(bDeepBruteForce) {
