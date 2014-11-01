@@ -245,6 +245,7 @@ int _tmain(int argc, _TCHAR* argv[])
             case L'h':
             case L'H':
                 validUsage = FALSE;
+                bIgnoreFile = TRUE;
                 break;
             default:
                 validUsage = FALSE;
