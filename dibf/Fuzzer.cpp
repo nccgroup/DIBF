@@ -124,7 +124,13 @@ VOID Fuzzer::StaticFuzzerInitializer::Tracker::print()
         +FailedRequests
         +CanceledRequests
         == CompletedRequests ? L"YES" : L"NO (it's ok)");
-    TPRINT(LEVEL_INFO_ALL, L"Cleanup completed: %s (%u request%s still allocated)\n", !AllocatedRequests ? L"YES" : L"NO", AllocatedRequests, AllocatedRequests>1?L"s":L"");
+    // Cleanup completed
+    if(!AllocatedRequests) {
+        TPRINT(LEVEL_INFO_ALL, L"Cleanup completed, no request still allocated\n");
+    }
+    else {
+        TPRINT(LEVEL_INFO_ALL, L"Cleanup incomplete, %u request%s still allocated\n", AllocatedRequests, AllocatedRequests>1?L"s":L"");
+    }
     TPRINT(LEVEL_INFO_ALL, L"----\n");
     printDateTime(TRUE);
     TPRINT(LEVEL_ALWAYS_PRINT, L"---------------------------------------\n\n");

@@ -147,7 +147,7 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
     // TODO: merge 'bail' and 'cleanup' into state
     do {
         // Dequeue I/O packet
-        bResult = GetQueuedCompletionStatus(asyncfuzzer->hIocp, &nbOfBytes, &specialPacket, &pOvrlp, 1000/*INFINITE*/);
+        bResult = GetQueuedCompletionStatus(asyncfuzzer->hIocp, &nbOfBytes, &specialPacket, &pOvrlp, INFINITE);
         // Handle special control overlapped types
         request = NULL;
         if(bResult) {
@@ -156,24 +156,12 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
                 case SPECIAL_OVERLAPPED_START:
                     TPRINT(LEVEL_INFO, L"TID[%u]: CONTROL PASSED TO WORKER THREADS\n", GetCurrentThreadId());
                     break;
-/*
-                case SPECIAL_OVERLAPPED_INIT_CLEANUP:
-                    // This thread will send signals to all others
-                    finish = TRUE;
-                    for(UINT i=0; i<asyncfuzzer->startingNbThreads-1; i++) {
-                        // Since this thread will never dequeue again, it will never receive both SPECIAL_OVELRAPPEDS
-                        PostQueuedCompletionStatus(asyncfuzzer->hIocp, 0, SPECIAL_PACKET, SPECIAL_OVERLAPPED_CLEANUP);
-                    }
-                    TPRINT(LEVEL_ALWAYS_PRINT, L"+++++++++++++++++++++++++++++++++++++++++++++++++++++ TID[%u]: RECEIVED GLOBAL TERMINATION SIGNAL\n", GetCurrentThreadId());
-                    break;
-                case SPECIAL_OVERLAPPED_CLEANUP:
-                    finish = TRUE;
-                    TPRINT(LEVEL_ALWAYS_PRINT, L"+++++++++++++++++++++++++++++++++++++++++++++++++++++ TID[%u]: RECEIVED TERMINATIONL SIGNAL\n", GetCurrentThreadId());
+                case SPECIAL_OVERLAPPED_DONE:
+                    // Nothing to do
                     break;
                 default:
-                    TPRINT(LEVEL_ALWAYS_PRINT, L"+++++++++++++++++++++++++++++++++++++++++++++++++++++ TID[%u]: RECEIVED BOGUS OVERLAP\n", GetCurrentThreadId());
+                    // This should NEVER happen
                     break;
-*/
                 }
             }
             else {
@@ -184,10 +172,10 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
             }
         }
         else {
-            // TIME OUT HANDLING
+            // This should NEVER happen
             if(!pOvrlp) {
                 TPRINT(LEVEL_ERROR, L"TID[%u]: TIMEOUT/INTERNAL ERROR WAITING FOR I/O COMPLETION\n", GetCurrentThreadId());
-                //continue; // get out
+                continue; // get out
             }
             else {
                 // Capture the request that just completed
@@ -223,6 +211,10 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
                 InterlockedDecrement(&Fuzzer::s_init.tracker.AllocatedRequests);
                 if(Fuzzer::s_init.tracker.AllocatedRequests==0) {
                     asyncfuzzer->state=STATE_DONE;
+                    for(UINT i=0; i<asyncfuzzer->startingNbThreads-1; i++) {
+                        // Since this thread will never dequeue again, it will never receive both SPECIAL_OVELRAPPEDS
+                        PostQueuedCompletionStatus(asyncfuzzer->hIocp, 0, SPECIAL_PACKET, SPECIAL_OVERLAPPED_DONE);
+                    }
                 }
             }
         }
