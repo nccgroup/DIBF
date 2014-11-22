@@ -10,7 +10,16 @@
 
 #include "stdafx.h"
 #include "dibf.h"
-#include "Fuzzers.h"
+#include "AsyncFuzzer.h"
+
+Dibf::Dibf() : hDevice(INVALID_HANDLE_VALUE) {}
+
+Dibf::~Dibf()
+{
+    if(hDevice!=INVALID_HANDLE_VALUE) {
+        CloseHandle(hDevice);
+    }
+}
 
 //DESCRIPTION:
 // This function reads a ULONG in decimal or hex from a string and eventually verifies it is within bounds
@@ -26,7 +35,7 @@
 // TRUE on success
 // FALSE on failure
 //
-BOOL readAndValidateCommandLineUlong(LPTSTR str, ULONG lowerBound, ULONG upperBound, PULONG out, BOOL check)
+BOOL Dibf::readAndValidateCommandLineUlong(LPTSTR str, ULONG lowerBound, ULONG upperBound, PULONG out, BOOL check)
 {
     BOOL bResult=FALSE;
     TCHAR *pEnd;
@@ -41,111 +50,42 @@ BOOL readAndValidateCommandLineUlong(LPTSTR str, ULONG lowerBound, ULONG upperBo
     return bResult;
 }
 
-
-//DESCRIPTION:
-// This function prints the RUN STARTED/RUN ENDED date & time string
-//
-//INPUT:
-// ended - boolean controlling whether to print "RUN ENDED" OR "RUN STARTED"
-//
-//OUTPUT:
-// None
-//
-VOID printDateTime(BOOL ended)
+BOOL Dibf::DoAllBruteForce(PTSTR pDeviceName, DWORD dwIOCTLStart, DWORD dwIOCTLEnd, BOOL deep)
 {
-    TCHAR timestr[64];
-    TCHAR datestr[64];
-    LPTSTR fmt = ended ? L"RUN ENDED: %s %s\n" : L"RUN STARTED: %s %s\n";
-
-    // Print date & time
-    if(GetDateFormat(LOCALE_USER_DEFAULT, 0, NULL, NULL, datestr, 32) && GetTimeFormat(LOCALE_USER_DEFAULT, TIME_NOSECONDS, NULL, NULL, timestr, 32)) {
-        TPRINT(LEVEL_ALWAYS_PRINT, fmt, datestr, timestr);
-    }
-    else {
-        TPRINT(LEVEL_ALWAYS_PRINT, L"TIME NOT AVAILABLE\n");
-    }
-    return;
-}
-
-//DESCRIPTION:
-// This function prints the cummulative tracked statitists
-//
-//INPUT:
-// pTracker - Pointer to the tracker struct
-//
-//OUTPUT:
-// None
-VOID printTracker(PTRACKER pTracker)
-{
-    // Wait for all the volatile writes to go through
-    MemoryBarrier();
-    // clean print
-    fflush(stdout);
-    // Print summary
-    TPRINT(LEVEL_ALWAYS_PRINT, L"---------------------------------------\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L"Sent Requests : %d\n", pTracker->SentRequests);
-    TPRINT(LEVEL_ALWAYS_PRINT, L"Completed Requests : %d (%d sync, %d async)\n", pTracker->CompletedRequests, pTracker->SynchronousRequests, pTracker->ASyncRequests);
-    TPRINT(LEVEL_ALWAYS_PRINT, L"SuccessfulRequests : %d\n", pTracker->SuccessfulRequests);
-    TPRINT(LEVEL_ALWAYS_PRINT, L"FailedRequests : %d\n", pTracker->FailedRequests);
-    TPRINT(LEVEL_ALWAYS_PRINT, L"CanceledRequests : %d\n", pTracker->CanceledRequests);
-    TPRINT(LEVEL_INFO_ALL, L"----\n");
-    TPRINT(LEVEL_INFO_ALL, L"Consistent Results: %s\n", pTracker->SuccessfulRequests
-        +pTracker->FailedRequests
-        +pTracker->CanceledRequests
-        == pTracker->CompletedRequests ? L"YES" : L"NO (it's ok)");
-    TPRINT(LEVEL_INFO_ALL, L"Cleanup completed: %s\n", !pTracker->AllocatedRequests ? L"YES" : L"NO (it's ok)");
-    TPRINT(LEVEL_INFO_ALL, L"----\n");
-    printDateTime(TRUE);
-    TPRINT(LEVEL_ALWAYS_PRINT, L"---------------------------------------\n\n");
-    return;
-}
-
-HANDLE DoAllBruteForce(PTSTR pDeviceName, DWORD dwIOCTLStart, DWORD dwIOCTLEnd, PIOCTL_STORAGE pIOCTLStorage, PDWORD pdwIOCTLCount, BOOL deep)
-{
-    HANDLE hDevice;
+    BOOL bResult=FALSE;
 
     hDevice = CreateFile(pDeviceName, MAXIMUM_ALLOWED, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
     if(hDevice!=INVALID_HANDLE_VALUE) {
         //Bruteforce IOCTLs
         TPRINT(LEVEL_ALWAYS_PRINT, L"<< Bruteforcing IOCTLs >>\n");
-        *pdwIOCTLCount = BruteForceIOCTLs(hDevice, pIOCTLStorage, dwIOCTLStart, dwIOCTLEnd, deep);
-        if(pIOCTLStorage[0].dwIOCTL!=0) {
+        bResult = BruteForceIOCTLs(dwIOCTLStart, dwIOCTLEnd, deep);
+        if(bResult) {
             TPRINT(LEVEL_ALWAYS_PRINT, L"---------------------------------------\n\n");
             TPRINT(LEVEL_INFO, L"Bruteforcing buffer sizes\n");
-            if(BruteForceBufferSizes(hDevice, pIOCTLStorage)) {
+            bResult = BruteForceBufferSizes();
+            if(bResult) {
                 TPRINT(LEVEL_ALWAYS_PRINT, L"---------------------------------------\n\n");
                 TPRINT(LEVEL_INFO, L"Writing bruteforce results to file\n");
-                WriteBruteforceResult(pDeviceName, pIOCTLStorage);
+                // TODO: NOTHING BECAUSE WE CONTINUE EVEN IF ERROR SO NO NEED TO PROPAGATE
+                WriteBruteforceResult(pDeviceName, &IOCTLStorage);
             }
         }
         else {
             TPRINT(LEVEL_ERROR, L"Unable to find any valid IOCTLs, exiting...\n");
-            CloseHandle(hDevice);
             hDevice = INVALID_HANDLE_VALUE;
         }
     }
     else {
         TPRINT(LEVEL_ERROR, L"Unable to open device %s, error %#.8x\n", pDeviceName, GetLastError());
     }
-    return hDevice;
+    return bResult;
 }
 
-//DESCRIPTION:
-// main
-//
-//INPUT:
-// command line
-//
-//OUTPUT:
-// returns 0
-//
-int _tmain(int argc, _TCHAR* argv[])
+BOOL Dibf::start(INT argc, _TCHAR* argv[])
 {
-    int i;
+    INT i;
     TCHAR pDeviceName[MAX_PATH];
-    HANDLE hDevice=INVALID_HANDLE_VALUE;
-    IOCTL_STORAGE pIOCTLStorage[MAX_IOCTLS]={0}; //TODO: add size-returning functionality to ReadBruteforceResult to be able to only allocate on heap what's needed
-    BOOL bDeepBruteForce=FALSE, bResultsFromFile=FALSE, validUsage=TRUE, bIgnoreFile=FALSE, gotDeviceName=FALSE;
+    BOOL bDeepBruteForce=FALSE, bIoctls=FALSE, validUsage=TRUE, bIgnoreFile=FALSE, gotDeviceName=FALSE;
     DWORD dwIOCTLStart=START_IOCTL_VALUE, dwIOCTLEnd=END_IOCTL_VALUE, dwFuzzStage=0xf, dwIOCTLCount=0;
     ULONG maxThreads=0, timeLimits[3]={INFINITE, INFINITE,INFINITE}, cancelRate=CANCEL_RATE, maxPending=MAX_PENDING;
 
@@ -178,7 +118,8 @@ int _tmain(int argc, _TCHAR* argv[])
                 break;
             case L'e':
             case L'E':
-                if(!bResultsFromFile && (i<argc-1) && readAndValidateCommandLineUlong(argv[i+1], 0, 0, &dwIOCTLEnd, FALSE)) {
+                // TODO: bIoctls can only be FALSE HERE NO?
+                if(!bIoctls && (i<argc-1) && readAndValidateCommandLineUlong(argv[i+1], 0, 0, &dwIOCTLEnd, FALSE)) {
                     i++;
                 }
                 else {
@@ -263,30 +204,38 @@ int _tmain(int argc, _TCHAR* argv[])
             }
         }
     }
-    // Unless -i
-    if(!bIgnoreFile) {
-    // Attempt to read file
-        bResultsFromFile = ReadBruteforceResult(pDeviceName, pIOCTLStorage, &dwIOCTLCount);
-    }
-    // usage verified and device name from file or commandline
-    if(validUsage && (bResultsFromFile || gotDeviceName)) {
-        // Open the device based on the file name read from file
-        if(bResultsFromFile) {
-            hDevice = CreateFile(pDeviceName, MAXIMUM_ALLOWED, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
-            if(hDevice==INVALID_HANDLE_VALUE) {
-                TPRINT(LEVEL_ERROR, L"Error opening device %s, error %d\n", pDeviceName, GetLastError());
+    if(validUsage) {
+        // Unless -i
+        if(!bIgnoreFile) {
+            // Attempt to read file
+            bIoctls = ReadBruteforceResult(pDeviceName, &IOCTLStorage, &this->IOCTLStorage.count);
+            if(!bIoctls) {
+                // TODO: PRINT "FAILED TO READ FILE, ATTEMPTING TO BRUTE FORCE IOCTLS"
             }
         }
-        // Open the device based on the file name passed from params, fuzz the IOCTLs and return the device handle
-        else {
-            hDevice = DoAllBruteForce(pDeviceName, dwIOCTLStart, dwIOCTLEnd, pIOCTLStorage, &dwIOCTLCount, bDeepBruteForce);
+        // If we don't have thee ioctls defs from file
+        if(!bIoctls) {
+            // Open the device based on the file name passed from params, fuzz the IOCTLs and return the device handle
+            bIoctls = DoAllBruteForce(pDeviceName, dwIOCTLStart, dwIOCTLEnd, bDeepBruteForce);
+            if(!bIoctls) {
+                // TODO: PRINT "FAILED TO GUESS IOCTLS, BAILING"
+            }
         }
-        // Got a valid handle and valid IOCTLS to fuzz, onto actual fuzzing
-        if(hDevice!=INVALID_HANDLE_VALUE) {
-            TPRINT(LEVEL_INFO, L"Fuzzing %d IOCTLs on device %s\n", dwIOCTLCount, pDeviceName);
-            FuzzIOCTLs(hDevice, pIOCTLStorage, dwFuzzStage, dwIOCTLCount, maxThreads, timeLimits, maxPending, cancelRate);
-            // Cleanup
-            CloseHandle(hDevice);
+        // At this point we need ioctl defs
+        if(bIoctls) {
+            // We got them from file
+            if(hDevice==INVALID_HANDLE_VALUE) {
+                // Open the device based on the file name read from file
+                hDevice = CreateFile(pDeviceName, MAXIMUM_ALLOWED, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+            }
+            if(hDevice!=INVALID_HANDLE_VALUE) {
+                // Got a valid handle and valid IOCTLS to fuzz, onto actual fuzzing
+                TPRINT(LEVEL_INFO, L"Fuzzing %d IOCTLs on device %s\n", dwIOCTLCount, pDeviceName);
+                FuzzIOCTLs(hDevice, &IOCTLStorage, dwFuzzStage, maxThreads, timeLimits, maxPending, cancelRate);
+            }
+            else {
+                TPRINT(LEVEL_ERROR, L"Error opening device %s, error %d\n", pDeviceName, GetLastError());
+            }
         }
     } // if validUsage
     else {
@@ -307,80 +256,31 @@ int _tmain(int argc, _TCHAR* argv[])
 //OUTPUT:
 // Last index into pIOCTLStorage array (count of found IOCTLs - 1).
 //
-DWORD BruteForceIOCTLs(HANDLE hDevice, PIOCTL_STORAGE pIOCTLStorage, DWORD dwIOCTLStart, DWORD dwIOCTLEnd, BOOL bDeepBruteForce)
+BOOL Dibf::BruteForceIOCTLs(DWORD dwIOCTLStart, DWORD dwIOCTLEnd, BOOL bDeepBruteForce)
 {
     DWORD dwIOCTL=dwIOCTLStart, dwIOCTLIndex=0;
+    IoRequest ioRequest(hDevice, dwIOCTL);  // This unique request gets reused iteratively
 
     while(dwIOCTL<dwIOCTLEnd) {
-        if(CallDeviceIoControl(hDevice, dwIOCTL, bDeepBruteForce)) {
+        ioRequest.SetIoCode(dwIOCTL);
+        if(ioRequest.testSendForValidRequest(bDeepBruteForce)) {
             if(dwIOCTLIndex<MAX_IOCTLS) {
-                TPRINT(LEVEL_INFO, L" Found IOCTL %#.8x\n",dwIOCTL);
-                pIOCTLStorage[dwIOCTLIndex++].dwIOCTL = dwIOCTL;
+                TPRINT(LEVEL_WARNING, L" Found IOCTL %#.8x\n", dwIOCTL);
+                IOCTLStorage.ioctls[dwIOCTLIndex++].dwIOCTL = dwIOCTL;
             }
             else {
                 TPRINT(LEVEL_ERROR, L" Found IOCTL but out of storage space, stopping bruteforce\n");
                 return MAX_IOCTLS;
             }
         }
-        if(dwIOCTL % 0x01000000 == 0) {
-            TPRINT(LEVEL_INFO, L"%#.8x\n", dwIOCTL);
+        if(dwIOCTL % 0x010000 == 0) {
+            TPRINT(LEVEL_INFO, L"Current iocode: %#.8x (found %u ioctls so far)\n", dwIOCTL, dwIOCTLIndex);
         }
         dwIOCTL++;
     }
-    return dwIOCTLIndex;
-}
-
-//DESCRIPTION:
-// Calls DeviceIoControl to determine if an IOCTL value is valid or not. If DeviceIoControl() returns TRUE
-// we know the IOCTL is valid. If DeviceIoControl() returns false, the IOCTL is though as being valid if
-// the error code is not ERROR_INVALID_FUNCTION or ERROR_NOT_SUPPORTED.
-// Doing a deep bruteforce calls DeviceIoControl() with several sizes between 0 and 32.
-//
-//INPUT:
-// hDevice - Handle to device object.
-// dwIOCTL - IOCTL value to test.
-// bDeepBruteForce - Boolean telling us if we are doing the deep bruteforce or not. Deep BF means we call
-// DeviceIoControl with several different sizes to increase our chances of getting past
-// very strict size checks happening before the dispatch function.
-//
-//OUTPUT:
-// Boolean telling us if the IOCTL was valid or not.
-//
-BOOL __inline CallDeviceIoControl(HANDLE hDevice, DWORD dwIOCTL, BOOL bDeepBruteForce)
-{
-    BOOL bRet=FALSE;
-    DWORD dwBytesReturned, dwError=ERROR_SUCCESS, dwSize;
-    BYTE bDummyBuffer[DUMMY_SIZE] = {};
-
-    if(bDeepBruteForce) {
-        for(dwSize=0; !bRet&&dwSize<=DEEP_BF_MAX; dwSize+=4) {
-            if(DeviceIoControl(hDevice, dwIOCTL, bDummyBuffer, dwSize, bDummyBuffer, DUMMY_SIZE, &dwBytesReturned, NULL)) {
-                bRet = TRUE;
-            }
-            else {
-                dwError = GetLastError();
-                if((dwError!=ERROR_INVALID_FUNCTION) && (dwError!=ERROR_NOT_SUPPORTED)) {
-                    bRet = TRUE;
-                }
-            }
-        }
-    }
-    else {
-        if(DeviceIoControl(hDevice, dwIOCTL, bDummyBuffer, DUMMY_SIZE, bDummyBuffer, DUMMY_SIZE, &dwBytesReturned, NULL)) {
-            bRet = TRUE;
-        }
-        else {
-            dwError = GetLastError();
-            if((dwError != ERROR_INVALID_FUNCTION) && (dwError != ERROR_NOT_SUPPORTED)) {
-                bRet = TRUE;
-            }
-        }
-        if(!bRet){
-            TPRINT(LEVEL_INFO, L"IOCTL %#.8x returned ", dwIOCTL);
-            PrintVerboseError(LEVEL_INFO, dwError);
-        }
-    }
-    return bRet;
+    // TODO: CHANGE STORAGE FOR IOCTLSTORAGE ?
+    this->IOCTLStorage.count = dwIOCTLIndex+1;
+    return dwIOCTLIndex!=0;
 }
 
 //DESCRIPTION:
@@ -396,20 +296,22 @@ BOOL __inline CallDeviceIoControl(HANDLE hDevice, DWORD dwIOCTL, BOOL bDeepBrute
 //OUTPUT:
 // None.
 //
-BOOL BruteForceBufferSizes(HANDLE hDevice, PIOCTL_STORAGE pIOCTLStorage)
+// TODO: REPLACE ALL CALLS TO DeviceIoControl with our wrapper
+BOOL Dibf::BruteForceBufferSizes()
 {
     BOOL bResult=TRUE;
     PBYTE pDummyBuffer=NULL;
     DWORD i=0, dwCurrentSize, dwBytesReturned;
 
-    pDummyBuffer = (PBYTE)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, MAX_BF_BUFFER_SIZE);
+    pDummyBuffer = (PBYTE)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, 8192);
     if(pDummyBuffer) {
-        while((i<MAX_IOCTLS) && (pIOCTLStorage[i].dwIOCTL!=0)) {
-            TPRINT(LEVEL_INFO, L" Working on IOCTL %#.8x\n", pIOCTLStorage[i].dwIOCTL);
+        while((i<MAX_IOCTLS) && (IOCTLStorage.ioctls[i].dwIOCTL!=0)) {
+            TPRINT(LEVEL_INFO, L" Working on IOCTL %#.8x\n", IOCTLStorage.ioctls[i].dwIOCTL);
             //find lower size edge
             dwCurrentSize = 0;
-            while((dwCurrentSize<MAX_BF_BUFFER_SIZE)
-                && (!DeviceIoControl(hDevice,pIOCTLStorage[i].dwIOCTL, pDummyBuffer, dwCurrentSize, pDummyBuffer, MAX_BF_BUFFER_SIZE, &dwBytesReturned, NULL))
+            // TODO: REPLACE BY DEFINE
+            while((dwCurrentSize<8192)
+                && (!DeviceIoControl(hDevice, IOCTLStorage.ioctls[i].dwIOCTL, pDummyBuffer, dwCurrentSize, pDummyBuffer, 8192, &dwBytesReturned, NULL))
                 && (GetLastError()==ERROR_INVALID_PARAMETER)) {
                     dwCurrentSize++;
             }
@@ -418,23 +320,23 @@ BOOL BruteForceBufferSizes(HANDLE hDevice, PIOCTL_STORAGE pIOCTLStorage)
             //or
             //2. Performs a strict check on the outgoing buffer
             //we will hit this if statement.
-            if(dwCurrentSize>=MAX_BF_BUFFER_SIZE) {
+            if(dwCurrentSize>=8192) {
                 TPRINT(LEVEL_INFO_ALL, L" Failed to find lower edge. Skipping.\n");
-                pIOCTLStorage[i].dwLowerSize = INVALID_BUFFER_SIZE;
-                pIOCTLStorage[i].dwUpperSize = INVALID_BUFFER_SIZE;
+                IOCTLStorage.ioctls[i].dwLowerSize = -1;
+                IOCTLStorage.ioctls[i].dwUpperSize = -1;
             }
             else {
                 TPRINT(LEVEL_INFO_ALL, L" Found lower size edge at %d bytes\n", dwCurrentSize);
-                pIOCTLStorage[i].dwLowerSize = dwCurrentSize;
+                IOCTLStorage.ioctls[i].dwLowerSize = dwCurrentSize;
                 //find upper size edge
-                dwCurrentSize = MAX_BF_BUFFER_SIZE;
-                while((dwCurrentSize >= pIOCTLStorage[i].dwLowerSize)
-                    && (!DeviceIoControl(hDevice, pIOCTLStorage[i].dwIOCTL, pDummyBuffer, dwCurrentSize, pDummyBuffer, MAX_BF_BUFFER_SIZE, &dwBytesReturned, NULL))
+                dwCurrentSize = -1;
+                while((dwCurrentSize >= IOCTLStorage.ioctls[i].dwLowerSize)
+                    && (!DeviceIoControl(hDevice, IOCTLStorage.ioctls[i].dwIOCTL, pDummyBuffer, dwCurrentSize, pDummyBuffer, 8192, &dwBytesReturned, NULL))
                     && (GetLastError()==ERROR_INVALID_PARAMETER)) {
                         dwCurrentSize--;
                 }
                 TPRINT(LEVEL_INFO_ALL, L" Found upper size edge at %d bytes\n", dwCurrentSize);
-                pIOCTLStorage[i].dwUpperSize = dwCurrentSize;
+                IOCTLStorage.ioctls[i].dwUpperSize = dwCurrentSize;
             }
             //go to next IOCTL
             i++;
@@ -458,7 +360,7 @@ BOOL BruteForceBufferSizes(HANDLE hDevice, PIOCTL_STORAGE pIOCTLStorage)
 //OUTPUT:
 // None.
 //
-BOOL WriteBruteforceResult(TCHAR *pDeviceName, PIOCTL_STORAGE pIOCTLStorage)
+BOOL Dibf::WriteBruteforceResult(TCHAR *pDeviceName, IoctlStorage *pIOCTLStorage)
 {
     BOOL bResult=FALSE;
     HANDLE hFile;
@@ -471,8 +373,8 @@ BOOL WriteBruteforceResult(TCHAR *pDeviceName, PIOCTL_STORAGE pIOCTLStorage)
         if(-1!=_sntprintf_s(cScratchBuffer, MAX_PATH, _TRUNCATE, L"%s\n", pDeviceName)) {
             if(WriteFile(hFile, cScratchBuffer, _tcslen(cScratchBuffer)*sizeof(TCHAR), &dwBytesWritten, NULL)) {
                 //write all IOCTLs and their sizes
-                while((i<MAX_IOCTLS) && (pIOCTLStorage[i].dwIOCTL!=0)) {
-                    _sntprintf_s(cScratchBuffer, MAX_PATH, _TRUNCATE, L"%x %d %d\n", pIOCTLStorage[i].dwIOCTL, pIOCTLStorage[i].dwLowerSize, pIOCTLStorage[i].dwUpperSize);
+                while((i<MAX_IOCTLS) && (pIOCTLStorage->ioctls[i].dwIOCTL!=0)) {
+                    _sntprintf_s(cScratchBuffer, MAX_PATH, _TRUNCATE, L"%x %d %d\n", pIOCTLStorage->ioctls[i].dwIOCTL, pIOCTLStorage->ioctls[i].dwLowerSize, pIOCTLStorage->ioctls[i].dwUpperSize);
                     WriteFile(hFile, cScratchBuffer, _tcslen(cScratchBuffer)*sizeof(TCHAR), &dwBytesWritten, NULL);
                     i++;
                 }
@@ -504,19 +406,19 @@ BOOL WriteBruteforceResult(TCHAR *pDeviceName, PIOCTL_STORAGE pIOCTLStorage)
 // Populates pDeviceName, pIOCTLStorage and dwIOCTLCount. Returns a bool indicating
 // if the read was successful or not.
 //
-BOOL ReadBruteforceResult(TCHAR *pDeviceName, PIOCTL_STORAGE pIOCTLStorage, PDWORD dwIOCTLCount)
+BOOL Dibf::ReadBruteforceResult(TCHAR *pDeviceName, IoctlStorage *pIOCTLStorage, PDWORD dwIOCTLCount)
 {
     HANDLE hFile=INVALID_HANDLE_VALUE;
     DWORD error, dwFileSize, dwBytesRead, dwIOCTLIndex = 0;
     TCHAR *pBuffer=NULL, *pCurrent;
-    BOOL result=FALSE, resint;
+    BOOL bResult=FALSE, resint;
     INT charsRead=0, res;
 
     hFile = CreateFile(DIBF_BF_LOG_FILE, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if(hFile!=INVALID_HANDLE_VALUE) {
         dwFileSize = GetFileSize(hFile, NULL);
         if(dwFileSize!=INVALID_FILE_SIZE) {
-            if((dwFileSize >= 6) && (dwFileSize <= MAX_IOCTLS * sizeof(IOCTL_STORAGE) + MAX_PATH*sizeof(TCHAR))) {
+            if((dwFileSize >= 6) && (dwFileSize <= MAX_IOCTLS * sizeof(IoctlStorage) + MAX_PATH*sizeof(TCHAR))) {
                 pBuffer = (TCHAR*)HeapAlloc(GetProcessHeap(), 0, dwFileSize+sizeof(TCHAR));
                 if(pBuffer) {
                     resint = ReadFile(hFile, pBuffer, dwFileSize, &dwBytesRead, NULL);
@@ -530,7 +432,7 @@ BOOL ReadBruteforceResult(TCHAR *pDeviceName, PIOCTL_STORAGE pIOCTLStorage, PDWO
                         if(res==1) {
                             //now, read up all the IOCTLs and their size edges
                             do {
-                                res =_stscanf_s(pCurrent, L"%x %d %d%n[^\n]", &pIOCTLStorage[dwIOCTLIndex].dwIOCTL, &pIOCTLStorage[dwIOCTLIndex].dwLowerSize, &pIOCTLStorage[dwIOCTLIndex].dwUpperSize, &charsRead);
+                                res =_stscanf_s(pCurrent, L"%x %d %d%n[^\n]", &pIOCTLStorage->ioctls[dwIOCTLIndex].dwIOCTL, &pIOCTLStorage->ioctls[dwIOCTLIndex].dwLowerSize, &pIOCTLStorage->ioctls[dwIOCTLIndex].dwUpperSize, &charsRead);
                                 pCurrent += charsRead+1;
                             }
                             while(res==3 && ++dwIOCTLIndex<MAX_IOCTLS);
@@ -539,7 +441,7 @@ BOOL ReadBruteforceResult(TCHAR *pDeviceName, PIOCTL_STORAGE pIOCTLStorage, PDWO
                             TPRINT(LEVEL_INFO, L" Number of IOCTLs: %d\n", dwIOCTLIndex);
                             // Write back the number of IOCTLs
                             *dwIOCTLCount = dwIOCTLIndex;
-                            result = TRUE;
+                            bResult = TRUE;
                         }
                         else{
                             TPRINT(LEVEL_ERROR, L"Reading device name from log file %s failed.\n", DIBF_BF_LOG_FILE);
@@ -574,7 +476,7 @@ BOOL ReadBruteforceResult(TCHAR *pDeviceName, PIOCTL_STORAGE pIOCTLStorage, PDWO
             TPRINT(LEVEL_ERROR, L"Failed to open Log file %s with error %x\n", DIBF_BF_LOG_FILE, GetLastError());
         }
     }
-    return result;
+    return bResult;
 }
 
 //DESCRIPTION:
@@ -594,36 +496,37 @@ BOOL ReadBruteforceResult(TCHAR *pDeviceName, PIOCTL_STORAGE pIOCTLStorage, PDWO
 //OUTPUT:
 // None.
 //
-VOID FuzzIOCTLs(HANDLE hDevice, PIOCTL_STORAGE pIOCTLStorage, DWORD dwFuzzStage, DWORD dwIOCTLCount, ULONG maxThreads, PULONG timeLimits, ULONG maxPending, ULONG cancelRate)
+VOID Dibf::FuzzIOCTLs(HANDLE hDevice, IoctlStorage *pIOCTLStorage, DWORD dwFuzzStage, ULONG maxThreads, PULONG timeLimits, ULONG maxPending, ULONG cancelRate)
 {
-    TRACKER tracker = {0};
-
-    InitializeFuzzersTermination();
     // If enabled by command line, run pure random fuzzer
     if(timeLimits[0]&&(dwFuzzStage & RANDOM_FUZZER)==RANDOM_FUZZER) {
         TPRINT(LEVEL_ALWAYS_PRINT, L"<<<< RUNNING RANDOM FUZZER >>>>\n");
-        printDateTime(FALSE);
-        StartSyncFuzzer(RandomFuzzer, hDevice, pIOCTLStorage, dwIOCTLCount, timeLimits[0], &tracker);
-        printTracker(&tracker);
+        // printDateTime(FALSE);
+        // StartSyncFuzzer(RandomFuzzer, hDevice, pIOCTLStorage, dwIOCTLCount, timeLimits[0], &tracker);
+        Fuzzer::s_init.tracker.print();
     }
     // If enabled by command line, run sliding DWORD fuzzer
     if(timeLimits[1]&&(dwFuzzStage & DWORD_FUZZER) == DWORD_FUZZER) {
         TPRINT(LEVEL_ALWAYS_PRINT, L"<<<< RUNNING SLIDING DWORD FUZZER >>>>\n");
-        printDateTime(FALSE);
-        StartSyncFuzzer(SlidingDWORDFuzzer, hDevice, pIOCTLStorage, dwIOCTLCount, timeLimits[1], &tracker);
-        printTracker(&tracker);
+        // printDateTime(FALSE);
+        // StartSyncFuzzer(SlidingDWORDFuzzer, hDevice, pIOCTLStorage, dwIOCTLCount, timeLimits[1], &tracker);
+        Fuzzer::s_init.tracker.print();
     }
     // If enabled by command line, run async fuzzer
     if(timeLimits[2]&&(dwFuzzStage & ASYNC_FUZZER) == ASYNC_FUZZER) {
         TPRINT(LEVEL_ALWAYS_PRINT, L"<<<< RUNNING ASYNC FUZZER >>>>\n");
-        printDateTime(FALSE);
-        Asyncfuzzer(hDevice, pIOCTLStorage, dwIOCTLCount, maxThreads, timeLimits[2], maxPending, cancelRate, &tracker);
-        printTracker(&tracker);
+        // printDateTime(FALSE);
+        AsyncFuzzer *asyncf = new AsyncFuzzer(hDevice, timeLimits[2], maxPending, cancelRate, pIOCTLStorage);
+        // TODO: Add fuzzing provider to Fuzzer constructor
+        asyncf->fuzzingProvider = new Dumbfuzzer(pIOCTLStorage);
+        if(asyncf->init(maxThreads)) {
+            asyncf->start();
+        }
+        else {
+            TPRINT(LEVEL_ERROR, L"ASYNC FUZZER INIT FAILED. ABORTING RUN.\n");
+        }
+        Fuzzer::s_init.tracker.print();
     } // if async fuzzer
-    // Unregister
-    if(!SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, FALSE)) {
-        TPRINT(LEVEL_WARNING, L"\n WARNING: FAILED TO UNREGISTER CONTROL HANDLER\n");
-    }
     return;
 }
 
@@ -636,7 +539,7 @@ VOID FuzzIOCTLs(HANDLE hDevice, PIOCTL_STORAGE pIOCTLStorage, DWORD dwFuzzStage,
 //OUTPUT:
 // None.
 //
-VOID usage(void)
+VOID Dibf::usage(VOID)
 {
     TPRINT(LEVEL_ALWAYS_PRINT, L"---------------------------------------------------------------------------\n");
     TPRINT(LEVEL_ALWAYS_PRINT, L"DIBF - Device IOCTL Bruteforcer and Fuzzer\n");
@@ -676,4 +579,20 @@ VOID usage(void)
     TPRINT(LEVEL_ALWAYS_PRINT, L" - CTRL-C interrupts the current stage and moves to the next if any. Current statistics will be displayed.\n");
     TPRINT(LEVEL_ALWAYS_PRINT, L" - The statistics are cumulative.\n");
     TPRINT(LEVEL_ALWAYS_PRINT, L" - The command-line flags are case-insensitive.\n");
+}
+
+//DESCRIPTION:
+// main
+//
+//INPUT:
+// command line
+//
+//OUTPUT:
+// returns 0
+//
+INT _tmain(INT argc, _TCHAR* argv[])
+{
+    Dibf dibf;
+    dibf.start(argc, argv);
+    return 0;
 }

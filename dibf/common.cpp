@@ -4,6 +4,16 @@
 // Globals
 ULONG g_verbose=LEVEL_ERROR; // Default is LEVEL_ERROR
 
+IoctlStorage::IoctlStorage()
+{
+    ioctls = (IoctlDef*)HeapAlloc(GetProcessHeap(), 0, sizeof(IoctlDef)*MAX_IOCTLS);
+}
+
+IoctlStorage::~IoctlStorage()
+{
+    HeapFree(GetProcessHeap(), 0, ioctls);
+}
+
 VOID PrintVerboseError(ULONG verbosity, DWORD error)
 {
     LPTSTR errormessage;

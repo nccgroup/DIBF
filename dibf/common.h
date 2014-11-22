@@ -10,6 +10,7 @@
     if ((LONG)verbose<=(LONG)g_verbose) { \
         _tprintf(format, __VA_ARGS__); \
     }
+
 // Verbosity levels
 #define LEVEL_ALWAYS_PRINT 0
 #define LEVEL_ERROR 0
@@ -17,23 +18,36 @@
 #define LEVEL_INFO 2
 #define LEVEL_INFO_ALL 3
 
-typedef struct _IOCTL_STORAGE {
-    DWORD dwIOCTL;
-    DWORD dwLowerSize;
-    DWORD dwUpperSize;
-} IOCTL_STORAGE, *PIOCTL_STORAGE;
+// Ioctl guessing vars
+#define START_IOCTL_VALUE 0x00100000
+#define END_IOCTL_VALUE 0xffffffff
+#define MAX_IOCTLS 512
+#define DEEP_BF_MAX 32
+#define DIBF_BF_LOG_FILE L"dibf-bf-results.txt"
+#define RANDOM_FUZZER 1
+#define DWORD_FUZZER 2
+#define ASYNC_FUZZER 4
+#define DIBF_SUCCESS 1
+#define DIBF_PENDING 0
+#define DIBF_ERROR -1
 
-typedef struct _TRACKER{
-    volatile long SentRequests;
-    volatile long CompletedRequests;
-    volatile long SynchronousRequests;
-    volatile long ASyncRequests;
-    volatile long SuccessfulRequests;
-    volatile long FailedRequests;
-    volatile long CanceledRequests;
-    volatile long PendingRequests;
-    volatile long AllocatedRequests;
-} TRACKER, *PTRACKER;
+class IoctlStorage
+{
+public:
+    IoctlStorage();
+    virtual ~IoctlStorage();
+private:
+    class IoctlDef
+    {
+    public:
+        DWORD dwIOCTL;
+        DWORD dwLowerSize;
+        DWORD dwUpperSize;
+    };
+public:
+    IoctlDef *ioctls;
+    ULONG count;
+};
 
 // Globals
 extern ULONG g_verbose;
