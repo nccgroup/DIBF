@@ -12,11 +12,10 @@
     }
 
 // Verbosity levels
-#define LEVEL_ALWAYS_PRINT 0
-#define LEVEL_ERROR 0
-#define LEVEL_WARNING 1
-#define LEVEL_INFO 2
-#define LEVEL_INFO_ALL 3
+#define VERBOSITY_DEFAULT 1
+#define VERBOSITY_ERROR 1
+#define VERBOSITY_INFO 2
+#define VERBOSITY_ALL 3
 
 // Ioctl guessing vars
 #define START_IOCTL_VALUE 0x00100000
@@ -24,9 +23,11 @@
 #define MAX_IOCTLS 512
 #define DEEP_BF_MAX 32
 #define DIBF_BF_LOG_FILE L"dibf-bf-results.txt"
+// Fuzzing stages
 #define RANDOM_FUZZER 1
 #define DWORD_FUZZER 2
-#define ASYNC_FUZZER 4
+#define PEACH_FUZZER 4
+// Async I/O statuses
 #define DIBF_SUCCESS 1
 #define DIBF_PENDING 0
 #define DIBF_ERROR -1

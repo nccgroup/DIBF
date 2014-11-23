@@ -2,7 +2,7 @@
 #include "common.h"
 
 // Globals
-ULONG g_verbose=LEVEL_ERROR; // Default is LEVEL_ERROR
+ULONG g_verbose=VERBOSITY_ERROR; // VERBOSITY_DEFAULT is VERBOSITY_ERROR
 
 IoctlStorage::IoctlStorage()
 {

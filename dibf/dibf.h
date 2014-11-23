@@ -5,9 +5,10 @@
 
 class Dibf {
 public:
+    // Constructor & Destructor
     Dibf();
     virtual ~Dibf();
-    // Function definitions
+    // Functions
     BOOL start(INT, _TCHAR**);
     BOOL readAndValidateCommandLineUlong(LPTSTR, ULONG, ULONG, PULONG, BOOL);
     BOOL DoAllBruteForce(PTSTR, DWORD, DWORD, BOOL);
@@ -18,6 +19,7 @@ public:
     VOID FuzzIOCTLs(HANDLE, IoctlStorage*, DWORD, ULONG, PULONG, ULONG, ULONG);
     VOID usage(void);
 private:
+    // Vars
     HANDLE hDevice;
     IoctlStorage IOCTLStorage; //TODO: add size-returning functionality to ReadBruteforceResult to be able to only allocate on heap what's needed
 };

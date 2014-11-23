@@ -57,26 +57,26 @@ BOOL Dibf::DoAllBruteForce(PTSTR pDeviceName, DWORD dwIOCTLStart, DWORD dwIOCTLE
     hDevice = CreateFile(pDeviceName, MAXIMUM_ALLOWED, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
     if(hDevice!=INVALID_HANDLE_VALUE) {
         //Bruteforce IOCTLs
-        TPRINT(LEVEL_ALWAYS_PRINT, L"<< Bruteforcing IOCTLs >>\n");
+        TPRINT(VERBOSITY_DEFAULT, L"<< Bruteforcing IOCTLs >>\n");
         bResult = BruteForceIOCTLs(dwIOCTLStart, dwIOCTLEnd, deep);
         if(bResult) {
-            TPRINT(LEVEL_ALWAYS_PRINT, L"---------------------------------------\n\n");
-            TPRINT(LEVEL_INFO, L"Bruteforcing buffer sizes\n");
+            TPRINT(VERBOSITY_DEFAULT, L"---------------------------------------\n\n");
+            TPRINT(VERBOSITY_INFO, L"Bruteforcing buffer sizes\n");
             bResult = BruteForceBufferSizes();
             if(bResult) {
-                TPRINT(LEVEL_ALWAYS_PRINT, L"---------------------------------------\n\n");
-                TPRINT(LEVEL_INFO, L"Writing bruteforce results to file\n");
+                TPRINT(VERBOSITY_DEFAULT, L"---------------------------------------\n\n");
+                TPRINT(VERBOSITY_INFO, L"Writing bruteforce results to file\n");
                 // TODO: NOTHING BECAUSE WE CONTINUE EVEN IF ERROR SO NO NEED TO PROPAGATE
                 WriteBruteforceResult(pDeviceName, &IOCTLStorage);
             }
         }
         else {
-            TPRINT(LEVEL_ERROR, L"Unable to find any valid IOCTLs, exiting...\n");
+            TPRINT(VERBOSITY_ERROR, L"Unable to find any valid IOCTLs, exiting...\n");
             hDevice = INVALID_HANDLE_VALUE;
         }
     }
     else {
-        TPRINT(LEVEL_ERROR, L"Unable to open device %s, error %#.8x\n", pDeviceName, GetLastError());
+        TPRINT(VERBOSITY_ERROR, L"Unable to open device %s, error %#.8x\n", pDeviceName, GetLastError());
     }
     return bResult;
 }
@@ -102,7 +102,7 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
                     i++;
                 }
                 else {
-                    TPRINT(LEVEL_ALWAYS_PRINT, L"Invalid verbosity level or bad syntax.\n");
+                    TPRINT(VERBOSITY_DEFAULT, L"Invalid verbosity level or bad syntax.\n");
                     validUsage = FALSE;
                 }
                 break;
@@ -112,7 +112,7 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
                     i++;
                 }
                 else {
-                    TPRINT(LEVEL_ALWAYS_PRINT, L"Parsing error for flag -%c.\n", argv[i][1]);
+                    TPRINT(VERBOSITY_DEFAULT, L"Parsing error for flag -%c.\n", argv[i][1]);
                     validUsage = FALSE;
                 }
                 break;
@@ -123,7 +123,7 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
                     i++;
                 }
                 else {
-                    TPRINT(LEVEL_ALWAYS_PRINT, L"Parsing error for flag -%c.\n", argv[i][1]);
+                    TPRINT(VERBOSITY_DEFAULT, L"Parsing error for flag -%c.\n", argv[i][1]);
                     validUsage = FALSE;
                 }
                 break;
@@ -134,7 +134,7 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
                         i++;
                     }
                     else {
-                        TPRINT(LEVEL_ALWAYS_PRINT, L"Parsing error for flag -%c.\n", argv[i][1]);
+                        TPRINT(VERBOSITY_DEFAULT, L"Parsing error for flag -%c.\n", argv[i][1]);
                         validUsage = FALSE;
                     }
                 break;
@@ -145,7 +145,7 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
                     i++;
                 }
                 else {
-                    TPRINT(LEVEL_ALWAYS_PRINT, L"Parsing error for flag -%c.\n", argv[i][1]);
+                    TPRINT(VERBOSITY_DEFAULT, L"Parsing error for flag -%c.\n", argv[i][1]);
                     validUsage = FALSE;
                 }
                 break;
@@ -155,7 +155,7 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
                     i++;
                 }
                 else {
-                    TPRINT(LEVEL_ALWAYS_PRINT, L"Parsing error for flag -%c.\n", argv[i][1]);
+                    TPRINT(VERBOSITY_DEFAULT, L"Parsing error for flag -%c.\n", argv[i][1]);
                     validUsage = FALSE;
                 }
                 break;
@@ -165,7 +165,7 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
                     i++;
                 }
                 else {
-                    TPRINT(LEVEL_ALWAYS_PRINT, L"Parsing error for flag -%c.\n", argv[i][1]);
+                    TPRINT(VERBOSITY_DEFAULT, L"Parsing error for flag -%c.\n", argv[i][1]);
                     validUsage = FALSE;
                 }
                 break;
@@ -175,7 +175,7 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
                     i++;
                 }
                 else {
-                    TPRINT(LEVEL_ALWAYS_PRINT, L"Parsing error for flag -%c.\n", argv[i][1]);
+                    TPRINT(VERBOSITY_DEFAULT, L"Parsing error for flag -%c.\n", argv[i][1]);
                     validUsage = FALSE;
                 }
                 break;
@@ -230,11 +230,11 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
             }
             if(hDevice!=INVALID_HANDLE_VALUE) {
                 // Got a valid handle and valid IOCTLS to fuzz, onto actual fuzzing
-                TPRINT(LEVEL_INFO, L"Fuzzing %d IOCTLs on device %s\n", dwIOCTLCount, pDeviceName);
+                TPRINT(VERBOSITY_INFO, L"Fuzzing %d IOCTLs on device %s\n", dwIOCTLCount, pDeviceName);
                 FuzzIOCTLs(hDevice, &IOCTLStorage, dwFuzzStage, maxThreads, timeLimits, maxPending, cancelRate);
             }
             else {
-                TPRINT(LEVEL_ERROR, L"Error opening device %s, error %d\n", pDeviceName, GetLastError());
+                TPRINT(VERBOSITY_ERROR, L"Error opening device %s, error %d\n", pDeviceName, GetLastError());
             }
         }
     } // if validUsage
@@ -265,16 +265,16 @@ BOOL Dibf::BruteForceIOCTLs(DWORD dwIOCTLStart, DWORD dwIOCTLEnd, BOOL bDeepBrut
         ioRequest.SetIoCode(dwIOCTL);
         if(ioRequest.testSendForValidRequest(bDeepBruteForce)) {
             if(dwIOCTLIndex<MAX_IOCTLS) {
-                TPRINT(LEVEL_WARNING, L" Found IOCTL %#.8x\n", dwIOCTL);
+                TPRINT(VERBOSITY_INFO, L" Found IOCTL %#.8x\n", dwIOCTL);
                 IOCTLStorage.ioctls[dwIOCTLIndex++].dwIOCTL = dwIOCTL;
             }
             else {
-                TPRINT(LEVEL_ERROR, L" Found IOCTL but out of storage space, stopping bruteforce\n");
+                TPRINT(VERBOSITY_ERROR, L" Found IOCTL but out of storage space, stopping bruteforce\n");
                 return MAX_IOCTLS;
             }
         }
         if(dwIOCTL % 0x010000 == 0) {
-            TPRINT(LEVEL_INFO, L"Current iocode: %#.8x (found %u ioctls so far)\n", dwIOCTL, dwIOCTLIndex);
+            TPRINT(VERBOSITY_INFO, L"Current iocode: %#.8x (found %u ioctls so far)\n", dwIOCTL, dwIOCTLIndex);
         }
         dwIOCTL++;
     }
@@ -306,7 +306,7 @@ BOOL Dibf::BruteForceBufferSizes()
     pDummyBuffer = (PBYTE)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, 8192);
     if(pDummyBuffer) {
         while((i<MAX_IOCTLS) && (IOCTLStorage.ioctls[i].dwIOCTL!=0)) {
-            TPRINT(LEVEL_INFO, L" Working on IOCTL %#.8x\n", IOCTLStorage.ioctls[i].dwIOCTL);
+            TPRINT(VERBOSITY_INFO, L" Working on IOCTL %#.8x\n", IOCTLStorage.ioctls[i].dwIOCTL);
             //find lower size edge
             dwCurrentSize = 0;
             // TODO: REPLACE BY DEFINE
@@ -321,12 +321,12 @@ BOOL Dibf::BruteForceBufferSizes()
             //2. Performs a strict check on the outgoing buffer
             //we will hit this if statement.
             if(dwCurrentSize>=8192) {
-                TPRINT(LEVEL_INFO_ALL, L" Failed to find lower edge. Skipping.\n");
+                TPRINT(VERBOSITY_ALL, L" Failed to find lower edge. Skipping.\n");
                 IOCTLStorage.ioctls[i].dwLowerSize = -1;
                 IOCTLStorage.ioctls[i].dwUpperSize = -1;
             }
             else {
-                TPRINT(LEVEL_INFO_ALL, L" Found lower size edge at %d bytes\n", dwCurrentSize);
+                TPRINT(VERBOSITY_ALL, L" Found lower size edge at %d bytes\n", dwCurrentSize);
                 IOCTLStorage.ioctls[i].dwLowerSize = dwCurrentSize;
                 //find upper size edge
                 dwCurrentSize = -1;
@@ -335,7 +335,7 @@ BOOL Dibf::BruteForceBufferSizes()
                     && (GetLastError()==ERROR_INVALID_PARAMETER)) {
                         dwCurrentSize--;
                 }
-                TPRINT(LEVEL_INFO_ALL, L" Found upper size edge at %d bytes\n", dwCurrentSize);
+                TPRINT(VERBOSITY_ALL, L" Found upper size edge at %d bytes\n", dwCurrentSize);
                 IOCTLStorage.ioctls[i].dwUpperSize = dwCurrentSize;
             }
             //go to next IOCTL
@@ -345,7 +345,7 @@ BOOL Dibf::BruteForceBufferSizes()
     } // if pDummyBuffer
     else {
         bResult = FALSE;
-        TPRINT(LEVEL_ERROR, L"Failed to allocate dummy buffer\n");
+        TPRINT(VERBOSITY_ERROR, L"Failed to allocate dummy buffer\n");
     }
     return bResult;
 }
@@ -380,16 +380,16 @@ BOOL Dibf::WriteBruteforceResult(TCHAR *pDeviceName, IoctlStorage *pIOCTLStorage
                 }
             } // if WriteFile
             else {
-                TPRINT(LEVEL_ERROR, L"Error writing to log file %s, %d\n", DIBF_BF_LOG_FILE, GetLastError());
+                TPRINT(VERBOSITY_ERROR, L"Error writing to log file %s, %d\n", DIBF_BF_LOG_FILE, GetLastError());
             }
         }
         else {
-            TPRINT(LEVEL_ERROR, L"snprintf error\n"); // add errno output
+            TPRINT(VERBOSITY_ERROR, L"snprintf error\n"); // add errno output
         }
         CloseHandle(hFile);
     } // if hFile != INVALID_HANDLE_VALUE
     else {
-        TPRINT(LEVEL_ERROR, L"Error creating/opening log file %s, %d\n", DIBF_BF_LOG_FILE, GetLastError());
+        TPRINT(VERBOSITY_ERROR, L"Error creating/opening log file %s, %d\n", DIBF_BF_LOG_FILE, GetLastError());
     }
     return bResult;
 }
@@ -436,44 +436,44 @@ BOOL Dibf::ReadBruteforceResult(TCHAR *pDeviceName, IoctlStorage *pIOCTLStorage,
                                 pCurrent += charsRead+1;
                             }
                             while(res==3 && ++dwIOCTLIndex<MAX_IOCTLS);
-                            TPRINT(LEVEL_INFO, L"Found and successfully loaded values from %s\n", DIBF_BF_LOG_FILE);
-                            TPRINT(LEVEL_INFO, L" Device name: %s\n", pDeviceName);
-                            TPRINT(LEVEL_INFO, L" Number of IOCTLs: %d\n", dwIOCTLIndex);
+                            TPRINT(VERBOSITY_DEFAULT, L"Found and successfully loaded values from %s\n", DIBF_BF_LOG_FILE);
+                            TPRINT(VERBOSITY_INFO, L" Device name: %s\n", pDeviceName);
+                            TPRINT(VERBOSITY_INFO, L" Number of IOCTLs: %d\n", dwIOCTLIndex);
                             // Write back the number of IOCTLs
                             *dwIOCTLCount = dwIOCTLIndex;
                             bResult = TRUE;
                         }
                         else{
-                            TPRINT(LEVEL_ERROR, L"Reading device name from log file %s failed.\n", DIBF_BF_LOG_FILE);
+                            TPRINT(VERBOSITY_ERROR, L"Reading device name from log file %s failed.\n", DIBF_BF_LOG_FILE);
                         }
                     } // if resint and read ok
                     else {
                         if(!resint) {
-                            TPRINT(LEVEL_ERROR, L"Reading log file %s failure %x\n", DIBF_BF_LOG_FILE, GetLastError());
+                            TPRINT(VERBOSITY_ERROR, L"Reading log file %s failure %x\n", DIBF_BF_LOG_FILE, GetLastError());
                         }
                         else {
-                            TPRINT(LEVEL_ERROR, L"Reading log file %s succeeded but wrong size read: expected 0x%x, got 0x%x\n", DIBF_BF_LOG_FILE, dwFileSize, dwBytesRead);
+                            TPRINT(VERBOSITY_ERROR, L"Reading log file %s succeeded but wrong size read: expected 0x%x, got 0x%x\n", DIBF_BF_LOG_FILE, dwFileSize, dwBytesRead);
                         }
                     }
                     HeapFree(GetProcessHeap(), 0, pBuffer);
                 } // if pBuffer
             } // if size ok
             else {
-                TPRINT(LEVEL_ERROR, L"Log file %s size (%u) is invalid\n", DIBF_BF_LOG_FILE, dwFileSize);
+                TPRINT(VERBOSITY_ERROR, L"Log file %s size (%u) is invalid\n", DIBF_BF_LOG_FILE, dwFileSize);
             }
         } // if GetFileSize
         else {
-            TPRINT(LEVEL_ERROR, L"GetFileSize on %s failed with error %x\n", DIBF_BF_LOG_FILE, GetLastError());
+            TPRINT(VERBOSITY_ERROR, L"GetFileSize on %s failed with error %x\n", DIBF_BF_LOG_FILE, GetLastError());
         }
         CloseHandle(hFile);
     } // if hfile != INVALID_HANDLE_VALUE
     else {
         error=GetLastError();
         if(error==ERROR_FILE_NOT_FOUND) {
-            TPRINT(LEVEL_ERROR, L"No existing %s file found\n", DIBF_BF_LOG_FILE);
+            TPRINT(VERBOSITY_ERROR, L"No existing %s file found\n", DIBF_BF_LOG_FILE);
         }
         else {
-            TPRINT(LEVEL_ERROR, L"Failed to open Log file %s with error %x\n", DIBF_BF_LOG_FILE, GetLastError());
+            TPRINT(VERBOSITY_ERROR, L"Failed to open Log file %s with error %x\n", DIBF_BF_LOG_FILE, GetLastError());
         }
     }
     return bResult;
@@ -500,22 +500,8 @@ VOID Dibf::FuzzIOCTLs(HANDLE hDevice, IoctlStorage *pIOCTLStorage, DWORD dwFuzzS
 {
     // If enabled by command line, run pure random fuzzer
     if(timeLimits[0]&&(dwFuzzStage & RANDOM_FUZZER)==RANDOM_FUZZER) {
-        TPRINT(LEVEL_ALWAYS_PRINT, L"<<<< RUNNING RANDOM FUZZER >>>>\n");
-        // printDateTime(FALSE);
-        // StartSyncFuzzer(RandomFuzzer, hDevice, pIOCTLStorage, dwIOCTLCount, timeLimits[0], &tracker);
-        Fuzzer::s_init.tracker.print();
-    }
-    // If enabled by command line, run sliding DWORD fuzzer
-    if(timeLimits[1]&&(dwFuzzStage & DWORD_FUZZER) == DWORD_FUZZER) {
-        TPRINT(LEVEL_ALWAYS_PRINT, L"<<<< RUNNING SLIDING DWORD FUZZER >>>>\n");
-        // printDateTime(FALSE);
-        // StartSyncFuzzer(SlidingDWORDFuzzer, hDevice, pIOCTLStorage, dwIOCTLCount, timeLimits[1], &tracker);
-        Fuzzer::s_init.tracker.print();
-    }
-    // If enabled by command line, run async fuzzer
-    if(timeLimits[2]&&(dwFuzzStage & ASYNC_FUZZER) == ASYNC_FUZZER) {
-        TPRINT(LEVEL_ALWAYS_PRINT, L"<<<< RUNNING ASYNC FUZZER >>>>\n");
-        // printDateTime(FALSE);
+        TPRINT(VERBOSITY_DEFAULT, L"<<<< RUNNING RANDOM FUZZER >>>>\n");
+        Fuzzer::printDateTime(FALSE);
         AsyncFuzzer *asyncf = new AsyncFuzzer(hDevice, timeLimits[2], maxPending, cancelRate, pIOCTLStorage);
         // TODO: Add fuzzing provider to Fuzzer constructor
         asyncf->fuzzingProvider = new Dumbfuzzer(pIOCTLStorage);
@@ -523,8 +509,21 @@ VOID Dibf::FuzzIOCTLs(HANDLE hDevice, IoctlStorage *pIOCTLStorage, DWORD dwFuzzS
             asyncf->start();
         }
         else {
-            TPRINT(LEVEL_ERROR, L"ASYNC FUZZER INIT FAILED. ABORTING RUN.\n");
+            TPRINT(VERBOSITY_ERROR, L"Async fuzzer init failed. aborting run.\n");
         }
+        Fuzzer::s_init.tracker.print();
+    }
+    // If enabled by command line, run sliding DWORD fuzzer
+    if(timeLimits[1]&&(dwFuzzStage & DWORD_FUZZER) == DWORD_FUZZER) {
+        TPRINT(VERBOSITY_DEFAULT, L"<<<< RUNNING SLIDING DWORD FUZZER >>>>\n");
+        // printDateTime(FALSE);
+        // StartSyncFuzzer(SlidingDWORDFuzzer, hDevice, pIOCTLStorage, dwIOCTLCount, timeLimits[1], &tracker);
+        Fuzzer::s_init.tracker.print();
+    }
+    // If enabled by command line, run async fuzzer
+    if(timeLimits[2]&&(dwFuzzStage & PEACH_FUZZER) == PEACH_FUZZER) {
+        TPRINT(VERBOSITY_DEFAULT, L"<<<< RUNNING PEACH FUZZER >>>>\n");
+        Fuzzer::printDateTime(FALSE);
         Fuzzer::s_init.tracker.print();
     } // if async fuzzer
     return;
@@ -541,44 +540,44 @@ VOID Dibf::FuzzIOCTLs(HANDLE hDevice, IoctlStorage *pIOCTLStorage, DWORD dwFuzzS
 //
 VOID Dibf::usage(VOID)
 {
-    TPRINT(LEVEL_ALWAYS_PRINT, L"---------------------------------------------------------------------------\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L"DIBF - Device IOCTL Bruteforcer and Fuzzer\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L"(C)2014 andreas at isecpartners dot com\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L"(C)2014 nguigo at isecpartners dot com\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L"---------------------------------------------------------------------------\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L"Usage:\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L" dibf <options> <device name>\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L"Options:\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L" -h You're looking at it\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L" -i Ignore (OVERWRITE) previous logfile\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L" -d Deep IOCTL bruteforce (8-9 times slower)\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L" -v [0-3] Verbosity level\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L" -s [ioctl] Start IOCTL value\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L" -e [ioctl] End IOCTL value\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L" -t [d1,d2,d4] Timeout for each fuzzer in seconds -- no spaces and decimal input ONLY\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L" -p [max requests] Max number of async pending requests (loosely enforced, default %d)\n", MAX_PENDING);
-    TPRINT(LEVEL_ALWAYS_PRINT, L" -a [max threads] Max number of threads, default is 2xNbOfProcessors, max is %d\n", MAX_THREADS);
-    TPRINT(LEVEL_ALWAYS_PRINT, L" -c [%% cancelation] Async cancelation attempt percent rate (default %d)\n", CANCEL_RATE);
-    TPRINT(LEVEL_ALWAYS_PRINT, L" -f [0-7] Fuzz flag. OR values together to run multiple\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L"          fuzzer stages. If left out, it defaults to all\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L"          stages.\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L"          0 = Brute-force IOCTLs only\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L"          1 = Random\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L"          2 = Sliding DWORD\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L"          4 = Async / Pending\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L"Examples:\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L" dibf \\\\.\\MyDevice\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L" dibf -v -d -s 0x10000000 \\\\.\\MyDevice\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L" dibf -f 0x3 \\\\.\\MyDevice\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L"Notes:\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L" - The bruteforce stage will generate a file named \"dibf-bf-results.txt\"\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L"   in the same directory as the executable. If dibf is started with no\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L"   arguments, it will look for this file and start the fuzzer with the values\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L"   from it.\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L" - If not specified otherwise, command line arguments can be passed as decimal or hex (prefix with \"0x\")\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L" - CTRL-C interrupts the current stage and moves to the next if any. Current statistics will be displayed.\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L" - The statistics are cumulative.\n");
-    TPRINT(LEVEL_ALWAYS_PRINT, L" - The command-line flags are case-insensitive.\n");
+    TPRINT(VERBOSITY_DEFAULT, L"---------------------------------------------------------------------------\n");
+    TPRINT(VERBOSITY_DEFAULT, L"DIBF - Device IOCTL Bruteforcer and Fuzzer\n");
+    TPRINT(VERBOSITY_DEFAULT, L"(C)2014 andreas at isecpartners dot com\n");
+    TPRINT(VERBOSITY_DEFAULT, L"(C)2014 nguigo at isecpartners dot com\n");
+    TPRINT(VERBOSITY_DEFAULT, L"---------------------------------------------------------------------------\n");
+    TPRINT(VERBOSITY_DEFAULT, L"Usage:\n");
+    TPRINT(VERBOSITY_DEFAULT, L" dibf <options> <device name>\n");
+    TPRINT(VERBOSITY_DEFAULT, L"Options:\n");
+    TPRINT(VERBOSITY_DEFAULT, L" -h You're looking at it\n");
+    TPRINT(VERBOSITY_DEFAULT, L" -i Ignore (OVERWRITE) previous logfile\n");
+    TPRINT(VERBOSITY_DEFAULT, L" -d Deep IOCTL bruteforce (8-9 times slower)\n");
+    TPRINT(VERBOSITY_DEFAULT, L" -v [0-3] Verbosity level\n");
+    TPRINT(VERBOSITY_DEFAULT, L" -s [ioctl] Start IOCTL value\n");
+    TPRINT(VERBOSITY_DEFAULT, L" -e [ioctl] End IOCTL value\n");
+    TPRINT(VERBOSITY_DEFAULT, L" -t [d1,d2,d4] Timeout for each fuzzer in seconds -- no spaces and decimal input ONLY\n");
+    TPRINT(VERBOSITY_DEFAULT, L" -p [max requests] Max number of async pending requests (loosely enforced, VERBOSITY_DEFAULT %d)\n", MAX_PENDING);
+    TPRINT(VERBOSITY_DEFAULT, L" -a [max threads] Max number of threads, VERBOSITY_DEFAULT is 2xNbOfProcessors, max is %d\n", MAX_THREADS);
+    TPRINT(VERBOSITY_DEFAULT, L" -c [%% cancelation] Async cancelation attempt percent rate (VERBOSITY_DEFAULT %d)\n", CANCEL_RATE);
+    TPRINT(VERBOSITY_DEFAULT, L" -f [0-7] Fuzz flag. OR values together to run multiple\n");
+    TPRINT(VERBOSITY_DEFAULT, L"          fuzzer stages. If left out, it VERBOSITY_DEFAULTs to all\n");
+    TPRINT(VERBOSITY_DEFAULT, L"          stages.\n");
+    TPRINT(VERBOSITY_DEFAULT, L"          0 = Brute-force IOCTLs only\n");
+    TPRINT(VERBOSITY_DEFAULT, L"          1 = Random\n");
+    TPRINT(VERBOSITY_DEFAULT, L"          2 = Sliding DWORD\n");
+    TPRINT(VERBOSITY_DEFAULT, L"          4 = Async / Pending\n");
+    TPRINT(VERBOSITY_DEFAULT, L"Examples:\n");
+    TPRINT(VERBOSITY_DEFAULT, L" dibf \\\\.\\MyDevice\n");
+    TPRINT(VERBOSITY_DEFAULT, L" dibf -v -d -s 0x10000000 \\\\.\\MyDevice\n");
+    TPRINT(VERBOSITY_DEFAULT, L" dibf -f 0x3 \\\\.\\MyDevice\n");
+    TPRINT(VERBOSITY_DEFAULT, L"Notes:\n");
+    TPRINT(VERBOSITY_DEFAULT, L" - The bruteforce stage will generate a file named \"dibf-bf-results.txt\"\n");
+    TPRINT(VERBOSITY_DEFAULT, L"   in the same directory as the executable. If dibf is started with no\n");
+    TPRINT(VERBOSITY_DEFAULT, L"   arguments, it will look for this file and start the fuzzer with the values\n");
+    TPRINT(VERBOSITY_DEFAULT, L"   from it.\n");
+    TPRINT(VERBOSITY_DEFAULT, L" - If not specified otherwise, command line arguments can be passed as decimal or hex (prefix with \"0x\")\n");
+    TPRINT(VERBOSITY_DEFAULT, L" - CTRL-C interrupts the current stage and moves to the next if any. Current statistics will be displayed.\n");
+    TPRINT(VERBOSITY_DEFAULT, L" - The statistics are cumulative.\n");
+    TPRINT(VERBOSITY_DEFAULT, L" - The command-line flags are case-insensitive.\n");
 }
 
 //DESCRIPTION:

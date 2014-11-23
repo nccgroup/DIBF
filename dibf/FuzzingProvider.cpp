@@ -4,7 +4,6 @@
 Dumbfuzzer::Dumbfuzzer(IoctlStorage* ioctlStorage) : ioStore(ioctlStorage)
 {
     // Init PRNG seed
-    TPRINT(LEVEL_ALWAYS_PRINT, L"Dumb PRNG initiated\n");
     srand((UINT)0x9c3a168f^GetTickCount());
     return;
 }
@@ -28,12 +27,9 @@ BOOL Dumbfuzzer::fuzzRequest(IoRequest *request) {
         // Get input buffer pointer (TODO: FIX THIS BAD OOP DESIGN)
         fuzzBuf=request->getInbuf();
         for(UINT i=0; i<size; i++) {
+            // TODO: optimize?
             fuzzBuf[i] = (UCHAR)(rand()&0xff);
         }
-    }
-    else {
-        // TODO: remove this
-        bResult = FALSE;
     }
     return bResult;
 }

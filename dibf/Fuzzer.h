@@ -13,6 +13,7 @@ class Fuzzer
 public:
     Fuzzer(IoctlStorage*);
     virtual ~Fuzzer();
+    static VOID Fuzzer::printDateTime(BOOL);
     // Nested class
     static  class StaticFuzzerInitializer
     {
@@ -36,7 +37,7 @@ public:
         } tracker;
     } s_init; // The event signaled by ctrl-c
 protected:
-    // Members
+    // Vars
     HANDLE hDev;
     IoctlStorage *ioctls;
     ULONG timeLimit;

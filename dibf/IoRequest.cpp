@@ -13,13 +13,13 @@ const DWORD IoRequest::invalidIoctlErrorCodes[] = {
 // Simple constructors
 IoRequest::IoRequest(HANDLE hDev) : hDev(hDev), inBuf(NULL), outBuf(NULL), inSize(0), outSize(0)
 {
-    // TPRINT(LEVEL_INFO, L"TID[%x]: NEW REQUEST %#.8x ALLOCATED\n", GetCurrentThreadId(), this);
+    // TPRINT(VERBOSITY_INFO, L"TID[%x]: NEW REQUEST %#.8x ALLOCATED\n", GetCurrentThreadId(), this);
     ZeroMemory(&overlp, sizeof(overlp));
 }
 
 IoRequest::IoRequest(HANDLE hDev, DWORD code) : hDev(hDev), iocode(code), inBuf(NULL), outBuf(NULL), inSize(0), outSize(0)
 {
-    // TPRINT(LEVEL_INFO, L"TID[%x]: NEW REQUEST %#.8x ALLOCATED\n", GetCurrentThreadId(), this);
+    // TPRINT(VERBOSITY_INFO, L"TID[%x]: NEW REQUEST %#.8x ALLOCATED\n", GetCurrentThreadId(), this);
     ZeroMemory(&overlp, sizeof(overlp));
 }
 
@@ -31,7 +31,7 @@ VOID IoRequest::reset()
 
 IoRequest::~IoRequest()
 {
-    // TPRINT(LEVEL_INFO_ALL, L"TID[%x]: FREEING REQUEST %x\n", GetCurrentThreadId(), this);
+    // TPRINT(VERBOSITY_ALL, L"TID[%x]: FREEING REQUEST %x\n", GetCurrentThreadId(), this);
     if(inBuf) {
         HeapFree(GetProcessHeap(), 0x0, inBuf);
     }
@@ -75,7 +75,7 @@ BOOL IoRequest::allocBuffers(DWORD inSize, DWORD outSize)
         }
     }
     if(!bResult) {
-        TPRINT(LEVEL_ERROR, L"IOREQUEST ALLOCATION FAILED\n");
+        TPRINT(VERBOSITY_ERROR, L"IOREQUEST ALLOCATION FAILED\n");
     }
     return bResult;
 }
@@ -90,8 +90,8 @@ BOOL IoRequest::sendRequest(BOOL async, PDWORD lastError)
         *lastError = GetLastError();
     }
     // Print result
-    // TPRINT(LEVEL_INFO_ALL, L"IOCTL %#.8x returned ", iocode);
-    // PrintVerboseError(LEVEL_INFO_ALL, *lastError);
+    // TPRINT(VERBOSITY_ALL, L"IOCTL %#.8x returned ", iocode);
+    // PrintVerboseError(VERBOSITY_ALL, *lastError);
     return bResult;
 }
 
@@ -131,7 +131,7 @@ BOOL IoRequest::craftFuzzedRequest(FuzzingProvider *fp)
     BOOL bResult=FALSE;
 
     // First allocate a standard output buffer
-    bResult = allocBuffers(0, DEFAULT_OUTLEN);
+    bResult = allocBuffers(0, VERBOSITY_DEFAULT_OUTLEN);
     if(bResult) {
         // TODO: IMPLEMENT BETTER LOGIC
         if(inBuf) {
@@ -143,11 +143,11 @@ BOOL IoRequest::craftFuzzedRequest(FuzzingProvider *fp)
             bResult = TRUE;
         }
         else {
-            TPRINT(LEVEL_ERROR, L"IO PACKET BUFFERS ALLOCATION FAILED: OUT OF MEMORY\n");
+            TPRINT(VERBOSITY_ERROR, L"IO PACKET BUFFERS ALLOCATION FAILED: OUT OF MEMORY\n");
         }
     }
     else {
-        TPRINT(LEVEL_ERROR, L"IO PACKET BUFFERS ALLOCATION FAILED: OUT OF MEMORY\n");
+        TPRINT(VERBOSITY_ERROR, L"IO PACKET BUFFERS ALLOCATION FAILED: OUT OF MEMORY\n");
     }
     return bResult;
 }
