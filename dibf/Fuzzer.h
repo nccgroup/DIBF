@@ -3,6 +3,7 @@
 #include "stdafx.h"
 #include "common.h"
 #include "IoRequest.h"
+#include "FuzzingProvider.h"
 
 #define STATE_FUZZING 2
 #define STATE_CLEANUP 1
@@ -11,7 +12,7 @@
 class Fuzzer
 {
 public:
-    Fuzzer(IoctlStorage*);
+    Fuzzer(FuzzingProvider*);
     virtual ~Fuzzer();
     static VOID Fuzzer::printDateTime(BOOL);
     // Nested class
@@ -41,6 +42,7 @@ protected:
     HANDLE hDev;
     IoctlStorage *ioctls;
     ULONG timeLimit;
+    FuzzingProvider *fuzzingProvider;
     // Functions
     BOOL InitializeFuzzersTermination();
     volatile DWORD state;

@@ -4,14 +4,14 @@
 Fuzzer::StaticFuzzerInitializer Fuzzer::s_init;
 
 // Trivial constructor
-Fuzzer::Fuzzer(IoctlStorage *iost) : ioctls(iost)
+Fuzzer::Fuzzer(FuzzingProvider *p) : fuzzingProvider(p)
 {
     state=STATE_FUZZING;
 }
 
 // Simple destructor
 Fuzzer::~Fuzzer() {
-    HeapFree(GetProcessHeap(), 0, ioctls);
+    delete fuzzingProvider;
 }
 
 //DESCRIPTION:
@@ -52,7 +52,7 @@ Fuzzer::StaticFuzzerInitializer::StaticFuzzerInitializer()
     if(hEvent) {
         // Register ctrl-c handler
         if(!SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, TRUE)) {
-            TPRINT(VERBOSITY_INFO, L"WARNING: FAILED TO REGISTER CONTROL HANDLER - CTRL-C will not work as expected\n");
+            TPRINT(VERBOSITY_INFO, L"Failed to register control handler, ctrl-c will not work as expected\n");
         }
     }
     else {
@@ -64,7 +64,7 @@ Fuzzer::StaticFuzzerInitializer::StaticFuzzerInitializer()
 Fuzzer::StaticFuzzerInitializer::~StaticFuzzerInitializer()
 {
     if(!SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, FALSE)) {
-        TPRINT(VERBOSITY_INFO, L"\n WARNING: FAILED TO UNREGISTER CONTROL HANDLER\n");
+        TPRINT(VERBOSITY_INFO, L"Failed to unregister control handler\n");
     }
 }
 
@@ -82,14 +82,14 @@ VOID Fuzzer::printDateTime(BOOL ended)
 {
     TCHAR timestr[64];
     TCHAR datestr[64];
-    LPTSTR fmt = ended ? L"RUN ENDED: %s %s\n" : L"RUN STARTED: %s %s\n";
+    LPTSTR fmt = ended ? L"Run ended: %s %s\n" : L"Run started: %s %s\n";
 
     // Print date & time
     if(GetDateFormat(LOCALE_USER_DEFAULT, 0, NULL, NULL, datestr, 32) && GetTimeFormat(LOCALE_USER_DEFAULT, TIME_NOSECONDS, NULL, NULL, timestr, 32)) {
         TPRINT(VERBOSITY_DEFAULT, fmt, datestr, timestr);
     }
     else {
-        TPRINT(VERBOSITY_DEFAULT, L"TIME NOT AVAILABLE\n");
+        TPRINT(VERBOSITY_DEFAULT, L"Time unavailable\n");
     }
     return;
 }
@@ -119,7 +119,7 @@ VOID Fuzzer::StaticFuzzerInitializer::Tracker::print()
     TPRINT(VERBOSITY_INFO, L"Consistent Results: %s\n", SuccessfulRequests
         +FailedRequests
         +CanceledRequests
-        == CompletedRequests ? L"YES" : L"NO (it's ok)");
+        == CompletedRequests ? L"Yes" : L"No (it's ok)");
     // Cleanup completed
     if(!AllocatedRequests && !PendingRequests) {
         TPRINT(VERBOSITY_INFO, L"Cleanup completed, no request still allocated or pending\n");

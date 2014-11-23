@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "AsyncFuzzer.h"
 
-AsyncFuzzer::AsyncFuzzer(HANDLE hDevice, ULONG timeLimit, ULONG maxPending, ULONG cancelRate, IoctlStorage *iost) : Fuzzer(iost)
+AsyncFuzzer::AsyncFuzzer(HANDLE hDevice, ULONG timeLimit, ULONG maxPending, ULONG cancelRate, FuzzingProvider *provider) : Fuzzer(provider)
 {
     this->hDev = hDevice;
     this->currentNbThreads = 0;
@@ -254,6 +254,7 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
                     // Cancel a portion of requests
                     canceled=FALSE;
                     if((ULONG)(rand()%100)<asyncfuzzer->cancelRate) {
+                        // TODO: get rid of compilation warning C4706
                         if(!(canceled = CancelIoEx(asyncfuzzer->hDev, &request->overlp))) {
                             TPRINT(VERBOSITY_ALL, L"TID[%.4u]: Failed to attempt cancelation of request %#.8x (iocode %#.8x), error %#.8x\n", GetCurrentThreadId(), request, request->GetIoCode(), GetLastError());
                         }

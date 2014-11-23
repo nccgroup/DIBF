@@ -3,12 +3,13 @@
 #include "common.h"
 #include "IoRequest.h"
 
-// virtual class
+// Pure virtual class
 class FuzzingProvider
 {
 public:
-    // virtual BOOL init() = 0;
-    virtual BOOL fuzzRequest(IoRequest*)=0;
+    FuzzingProvider();
+    virtual ~FuzzingProvider() = 0;
+    virtual BOOL fuzzRequest(IoRequest*) = 0;
 };
 
 class Dumbfuzzer : public FuzzingProvider

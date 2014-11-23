@@ -1,6 +1,10 @@
 #include "stdafx.h"
 #include "FuzzingProvider.h"
 
+// Empty constructor and destructor
+FuzzingProvider::FuzzingProvider() {}
+FuzzingProvider::~FuzzingProvider() {}
+
 Dumbfuzzer::Dumbfuzzer(IoctlStorage* ioctlStorage) : ioStore(ioctlStorage)
 {
     // Init PRNG seed

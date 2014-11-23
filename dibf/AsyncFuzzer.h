@@ -19,11 +19,10 @@
 class AsyncFuzzer : public Fuzzer
 {
 public:
-    AsyncFuzzer(HANDLE, ULONG, ULONG, ULONG, IoctlStorage*);
+    AsyncFuzzer(HANDLE, ULONG, ULONG, ULONG, FuzzingProvider*);
     ~AsyncFuzzer();
     BOOL init(ULONG);
     BOOL start();
-    FuzzingProvider *fuzzingProvider; // TODO: MAKE THIS PRIVATE
 private:
     // Members
     HANDLE hIocp;

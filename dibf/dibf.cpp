@@ -499,9 +499,7 @@ VOID Dibf::FuzzIOCTLs(HANDLE hDevice, IoctlStorage *pIOCTLStorage, DWORD dwFuzzS
     if(timeLimits[0]&&(dwFuzzStage & RANDOM_FUZZER)==RANDOM_FUZZER) {
         TPRINT(VERBOSITY_DEFAULT, L"<<<< RUNNING RANDOM FUZZER >>>>\n");
         Fuzzer::printDateTime(FALSE);
-        AsyncFuzzer *asyncf = new AsyncFuzzer(hDevice, timeLimits[2], maxPending, cancelRate, pIOCTLStorage);
-        // TODO: Add fuzzing provider to Fuzzer constructor
-        asyncf->fuzzingProvider = new Dumbfuzzer(pIOCTLStorage);
+        AsyncFuzzer *asyncf = new AsyncFuzzer(hDevice, timeLimits[2], maxPending, cancelRate, new Dumbfuzzer(pIOCTLStorage));
         if(asyncf->init(maxThreads)) {
             asyncf->start();
         }
@@ -509,6 +507,7 @@ VOID Dibf::FuzzIOCTLs(HANDLE hDevice, IoctlStorage *pIOCTLStorage, DWORD dwFuzzS
             TPRINT(VERBOSITY_ERROR, L"Async fuzzer init failed. aborting run.\n");
         }
         Fuzzer::s_init.tracker.print();
+        delete asyncf;
     }
     // If enabled by command line, run sliding DWORD fuzzer
     if(timeLimits[1]&&(dwFuzzStage & DWORD_FUZZER) == DWORD_FUZZER) {
