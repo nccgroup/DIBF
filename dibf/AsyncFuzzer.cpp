@@ -157,10 +157,10 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
                     TPRINT(VERBOSITY_INFO, L"TID[%.4u]: Control passed to worker threads\n", GetCurrentThreadId());
                     break;
                 case SPECIAL_OVERLAPPED_DONE:
-                    // Nothing to do
+                    TPRINT(VERBOSITY_INFO, L"TID[%.4u]: Received status complete notice - exiting\n", GetCurrentThreadId());
                     break;
                 default:
-                    // This should NEVER happen
+                    TPRINT(VERBOSITY_ERROR, L"TID[%.4u]: Received unexpected special OVERLAPPED\n", GetCurrentThreadId());
                     break;
                 }
             }
@@ -210,9 +210,10 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
                 delete request;
                 InterlockedDecrement(&Fuzzer::s_init.tracker.AllocatedRequests);
                 if(Fuzzer::s_init.tracker.AllocatedRequests==0) {
+                    TPRINT(VERBOSITY_INFO, L"TID[%.4u]: Last request was processed - exiting\n", GetCurrentThreadId());
                     asyncfuzzer->state=STATE_DONE;
                     for(UINT i=0; i<asyncfuzzer->startingNbThreads-1; i++) {
-                        // Since this thread will never dequeue again, it will never receive both SPECIAL_OVELRAPPEDS
+                        // Unblock other threads
                         PostQueuedCompletionStatus(asyncfuzzer->hIocp, 0, SPECIAL_PACKET, SPECIAL_OVERLAPPED_DONE);
                     }
                 }
@@ -274,18 +275,16 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
                     InterlockedIncrement(&Fuzzer::s_init.tracker.SynchronousRequests);
                     if(status==DIBF_SUCCESS){
                         InterlockedIncrement(&Fuzzer::s_init.tracker.SuccessfulRequests);
-                        TPRINT(VERBOSITY_ALL, L"TID[%.4u]: Sync i/o packet %#.8x (iocode %#.8x) completed successfully\n", GetCurrentThreadId(), request, request->GetIoCode());
+                        TPRINT(VERBOSITY_ALL, L"TID[%.4u]: Request %#.8x (iocode %#.8x) synchronously completed successfully\n", GetCurrentThreadId(), request, request->GetIoCode());
                     }
                     else {
                         InterlockedIncrement(&Fuzzer::s_init.tracker.FailedRequests);
-                        TPRINT(VERBOSITY_ALL, L"TID[%.4u]: Sync i/o packet %#.8x (iocode %#.8x) completed with error %#.8x\n", GetCurrentThreadId(), request, request->GetIoCode(), GetLastError());
+                        TPRINT(VERBOSITY_ALL, L"TID[%.4u]: Request %#.8x (iocode %#.8x) synchronously completed with error %#.8x\n", GetCurrentThreadId(), request, request->GetIoCode(), GetLastError());
                     }
                 }
             }
         } // while firing ioctl
     } while(asyncfuzzer->state!=STATE_DONE);
-    // Thread exit notification
-    TPRINT(VERBOSITY_INFO, L"TID[%.4u]: Fuzzer thread exited\n", GetCurrentThreadId());
     return 0;
 }
 
