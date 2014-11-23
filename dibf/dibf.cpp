@@ -115,7 +115,6 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
                 break;
             case L'e':
             case L'E':
-                // TODO: bIoctls can only be FALSE HERE NO?
                 if((i<argc-1) && readAndValidateCommandLineUlong(argv[i+1], 0, 0, &dwIOCTLEnd, FALSE)) {
                     i++;
                 }
@@ -275,7 +274,6 @@ BOOL Dibf::BruteForceIOCTLs(DWORD dwIOCTLStart, DWORD dwIOCTLEnd, BOOL bDeepBrut
         }
         dwIOCTL++;
     }
-    // TODO: CHANGE STORAGE FOR IOCTLSTORAGE ?
     this->IOCTLStorage.count = dwIOCTLIndex+1;
     return dwIOCTLIndex!=0;
 }
@@ -306,9 +304,8 @@ BOOL Dibf::BruteForceBufferSizes()
             TPRINT(VERBOSITY_INFO, L" Working on IOCTL %#.8x\n", IOCTLStorage.ioctls[i].dwIOCTL);
             //find lower size edge
             dwCurrentSize = 0;
-            // TODO: REPLACE BY DEFINE
-            while((dwCurrentSize<8192)
-                && (!DeviceIoControl(hDevice, IOCTLStorage.ioctls[i].dwIOCTL, pDummyBuffer, dwCurrentSize, pDummyBuffer, 8192, &dwBytesReturned, NULL))
+            while((dwCurrentSize<MAX_BUFSIZE)
+                && (!DeviceIoControl(hDevice, IOCTLStorage.ioctls[i].dwIOCTL, pDummyBuffer, dwCurrentSize, pDummyBuffer, MAX_BUFSIZE, &dwBytesReturned, NULL))
                 && (GetLastError()==ERROR_INVALID_PARAMETER)) {
                     dwCurrentSize++;
             }
@@ -328,7 +325,7 @@ BOOL Dibf::BruteForceBufferSizes()
                 //find upper size edge
                 dwCurrentSize = -1;
                 while((dwCurrentSize >= IOCTLStorage.ioctls[i].dwLowerSize)
-                    && (!DeviceIoControl(hDevice, IOCTLStorage.ioctls[i].dwIOCTL, pDummyBuffer, dwCurrentSize, pDummyBuffer, 8192, &dwBytesReturned, NULL))
+                    && (!DeviceIoControl(hDevice, IOCTLStorage.ioctls[i].dwIOCTL, pDummyBuffer, dwCurrentSize, pDummyBuffer, MAX_BUFSIZE, &dwBytesReturned, NULL))
                     && (GetLastError()==ERROR_INVALID_PARAMETER)) {
                         dwCurrentSize--;
                 }

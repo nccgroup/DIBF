@@ -20,8 +20,10 @@
 // Ioctl guessing vars
 #define START_IOCTL_VALUE 0x00100000
 #define END_IOCTL_VALUE 0xffffffff
-#define MAX_IOCTLS 512
 #define DEEP_BF_MAX 32
+#define MAX_BUFSIZE 8192 // 8k
+// Ioctl info storage
+#define MAX_IOCTLS 512
 #define DIBF_BF_LOG_FILE L"dibf-bf-results.txt"
 // Fuzzing stages
 #define RANDOM_FUZZER 1

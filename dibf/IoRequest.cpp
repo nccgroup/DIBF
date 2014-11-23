@@ -122,34 +122,6 @@ BOOL IoRequest::isValid(DWORD error)
     return bResult;
 }
 
-/*
-BOOL IoRequest::craftFuzzedRequest(FuzzingProvider *fp)
-{
-    BOOL bResult=FALSE;
-
-    // First allocate a standard output buffer
-    bResult = allocBuffers(0, VERBOSITY_DEFAULT_OUTLEN);
-    if(bResult) {
-        // TODO: IMPLEMENT BETTER LOGIC
-        if(inBuf) {
-            HeapFree(GetProcessHeap(), 0, inBuf);
-        }
-        // Get the iocode and buffer from provider
-        inBuf = fp->getFuzzBuffer(&iocode, inBuf, &inSize);
-        if(inBuf) {
-            bResult = TRUE;
-        }
-        else {
-            TPRINT(VERBOSITY_ERROR, L"IO PACKET BUFFERS ALLOCATION FAILED: OUT OF MEMORY\n");
-        }
-    }
-    else {
-        TPRINT(VERBOSITY_ERROR, L"IO PACKET BUFFERS ALLOCATION FAILED: OUT OF MEMORY\n");
-    }
-    return bResult;
-}
-*/
-
 // TODO: CHECK DEEP PROBING FEATURE WORKS AS EXPECTED
 BOOL IoRequest::testSendForValidRequest(BOOL deep)
 {
@@ -160,8 +132,7 @@ BOOL IoRequest::testSendForValidRequest(BOOL deep)
     // outlen is always 256 (usually there's only an upper bound)
     for(dwSize=deep?0:DEEP_BF_MAX; !bResult&&dwSize<=DEEP_BF_MAX; dwSize+=4) {
         allocBuffers(dwSize, DEFAULT_OUTLEN);
-        bResult = sendRequest(FALSE, &lastError); // TODO: || isValid(lastError);
-        bResult = bResult || isValid(lastError);
+        bResult = sendRequest(FALSE, &lastError) || isValid(lastError);
     }
     return bResult;
 }
