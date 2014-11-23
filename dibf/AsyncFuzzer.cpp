@@ -144,7 +144,6 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
     IoRequest *request;
     AsyncFuzzer *asyncfuzzer = (AsyncFuzzer*)param;
 
-    // TODO: merge 'bail' and 'cleanup' into state
     do {
         // Dequeue I/O packet
         bResult = GetQueuedCompletionStatus(asyncfuzzer->hIocp, &nbOfBytes, &specialPacket, &pOvrlp, INFINITE);
@@ -182,7 +181,6 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
                 request = CONTAINING_RECORD(pOvrlp, IoRequest, overlp);
             }
         }
-        // TODO: SHOVE THAT IN SUBFUNCTION? (static? urgh)
         // NORMAL REQUEST PROCESSING
         if(request) {
             // Accounting for completed requests
@@ -244,7 +242,6 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
                 break;
             }
             // Craft a fuzzed request
-            // TODO: ERROR CHECKING
             bResult = asyncfuzzer->fuzzingProvider->fuzzRequest(request);
             // If request fuzzed and ready for sending
             if(bResult) {
@@ -283,6 +280,9 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
                     }
                 }
             }
+            else {
+                TPRINT(VERBOSITY_ERROR, L"TID[%.4u]: Failed to craft fuzzed request\n");
+            }
         } // while firing ioctl
     } while(asyncfuzzer->state!=STATE_DONE);
     return 0;
@@ -311,7 +311,6 @@ BOOL AsyncFuzzer::start()
     BOOL bResult = FALSE;
     DWORD waitResult;
 
-    // TODO: ENABLE THIS ?
     bResult = SetFileCompletionNotificationModes(hDev, FILE_SKIP_COMPLETION_PORT_ON_SUCCESS);
     if(!bResult) {
         TPRINT(VERBOSITY_ERROR, L"Failed to configure iocompletion port with error %#.8x\n", GetLastError());
@@ -331,11 +330,11 @@ BOOL AsyncFuzzer::start()
                 bResult = TRUE;
             }
             else {
-                TPRINT(VERBOSITY_ERROR, L"Not all worker threads exited properly. Cleanup might not have been completed.\n");
+                TPRINT(VERBOSITY_ERROR, L"Not all worker threads exited timely\n");
             }
         }
     else {
-        TPRINT(VERBOSITY_ERROR, L"Failed wait on termination event.\n");
+        TPRINT(VERBOSITY_ERROR, L"Failed wait on termination event\n");
     }
     return bResult;
 }

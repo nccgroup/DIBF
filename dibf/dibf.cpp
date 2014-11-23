@@ -3,9 +3,7 @@
 *                                                                                  *
 * TODO:                                                                            *
 * - Alter code to be resilient against IOCTLs that locks                           *
-* - Minimize bruteforce space <- Probably not doable                               *
-* - Add functionality to write found IOCTLs and sizes into a file                  *
-*     => start / restart fuzzer without doing a bruteforce                         *
+* - Add functionality to guess valid output size                                   *
 ************************************************************************************/
 
 #include "stdafx.h"
@@ -66,7 +64,6 @@ BOOL Dibf::DoAllBruteForce(PTSTR pDeviceName, DWORD dwIOCTLStart, DWORD dwIOCTLE
             if(bResult) {
                 TPRINT(VERBOSITY_DEFAULT, L"---------------------------------------\n\n");
                 TPRINT(VERBOSITY_INFO, L"Writing bruteforce results to file\n");
-                // TODO: NOTHING BECAUSE WE CONTINUE EVEN IF ERROR SO NO NEED TO PROPAGATE
                 WriteBruteforceResult(pDeviceName, &IOCTLStorage);
             }
         }
@@ -119,7 +116,7 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
             case L'e':
             case L'E':
                 // TODO: bIoctls can only be FALSE HERE NO?
-                if(!bIoctls && (i<argc-1) && readAndValidateCommandLineUlong(argv[i+1], 0, 0, &dwIOCTLEnd, FALSE)) {
+                if((i<argc-1) && readAndValidateCommandLineUlong(argv[i+1], 0, 0, &dwIOCTLEnd, FALSE)) {
                     i++;
                 }
                 else {
@@ -210,7 +207,7 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
             // Attempt to read file
             bIoctls = ReadBruteforceResult(pDeviceName, &IOCTLStorage, &this->IOCTLStorage.count);
             if(!bIoctls) {
-                // TODO: PRINT "FAILED TO READ FILE, ATTEMPTING TO BRUTE FORCE IOCTLS"
+                TPRINT(VERBOSITY_ERROR, L"Failed to read IOCTLs data from file, attempting bruteforce\n");
             }
         }
         // If we don't have thee ioctls defs from file
@@ -218,7 +215,7 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
             // Open the device based on the file name passed from params, fuzz the IOCTLs and return the device handle
             bIoctls = DoAllBruteForce(pDeviceName, dwIOCTLStart, dwIOCTLEnd, bDeepBruteForce);
             if(!bIoctls) {
-                // TODO: PRINT "FAILED TO GUESS IOCTLS, BAILING"
+                TPRINT(VERBOSITY_ERROR, L"Failed to guess IOCTLs, exiting\n");
             }
         }
         // At this point we need ioctl defs

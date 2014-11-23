@@ -74,9 +74,6 @@ BOOL IoRequest::allocBuffers(DWORD inSize, DWORD outSize)
             bResult = FALSE;
         }
     }
-    if(!bResult) {
-        TPRINT(VERBOSITY_ERROR, L"IOREQUEST ALLOCATION FAILED\n");
-    }
     return bResult;
 }
 
