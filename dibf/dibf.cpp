@@ -503,21 +503,21 @@ VOID Dibf::FuzzIOCTLs(HANDLE hDevice, IoctlStorage *pIOCTLStorage, DWORD dwFuzzS
         else {
             TPRINT(VERBOSITY_ERROR, L"Async fuzzer init failed. aborting run.\n");
         }
-        Fuzzer::s_init.tracker.print();
+        Fuzzer::tracker.stats.print();
         delete asyncf;
     }
     // If enabled by command line, run sliding DWORD fuzzer
     if(timeLimits[1]&&(dwFuzzStage & DWORD_FUZZER) == DWORD_FUZZER) {
         TPRINT(VERBOSITY_DEFAULT, L"<<<< RUNNING SLIDING DWORD FUZZER >>>>\n");
         // printDateTime(FALSE);
-        // StartSyncFuzzer(SlidingDWORDFuzzer, hDevice, pIOCTLStorage, dwIOCTLCount, timeLimits[1], &tracker);
-        Fuzzer::s_init.tracker.print();
+        // StartSyncFuzzer(SlidingDWORDFuzzer, hDevice, pIOCTLStorage, dwIOCTLCount, timeLimits[1], &stats);
+        Fuzzer::tracker.stats.print();
     }
     // If enabled by command line, run async fuzzer
     if(timeLimits[2]&&(dwFuzzStage & PEACH_FUZZER) == PEACH_FUZZER) {
         TPRINT(VERBOSITY_DEFAULT, L"<<<< RUNNING PEACH FUZZER >>>>\n");
         Fuzzer::printDateTime(FALSE);
-        Fuzzer::s_init.tracker.print();
+        Fuzzer::tracker.stats.print();
     } // if async fuzzer
     return;
 }
@@ -557,7 +557,7 @@ VOID Dibf::usage(VOID)
     TPRINT(VERBOSITY_DEFAULT, L"          0 = Brute-force IOCTLs only\n");
     TPRINT(VERBOSITY_DEFAULT, L"          1 = Random\n");
     TPRINT(VERBOSITY_DEFAULT, L"          2 = Sliding DWORD\n");
-    TPRINT(VERBOSITY_DEFAULT, L"          4 = Async / Pending\n");
+    TPRINT(VERBOSITY_DEFAULT, L"          4 = Peach\n");
     TPRINT(VERBOSITY_DEFAULT, L"Examples:\n");
     TPRINT(VERBOSITY_DEFAULT, L" dibf \\\\.\\MyDevice\n");
     TPRINT(VERBOSITY_DEFAULT, L" dibf -v -d -s 0x10000000 \\\\.\\MyDevice\n");

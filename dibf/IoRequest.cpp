@@ -86,9 +86,6 @@ BOOL IoRequest::sendRequest(BOOL async, PDWORD lastError)
     if(!bResult) {
         *lastError = GetLastError();
     }
-    // Print result
-    // TPRINT(VERBOSITY_ALL, L"IOCTL %#.8x returned ", iocode);
-    // PrintVerboseError(VERBOSITY_ALL, *lastError);
     return bResult;
 }
 

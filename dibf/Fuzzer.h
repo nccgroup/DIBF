@@ -16,14 +16,15 @@ public:
     virtual ~Fuzzer();
     static VOID Fuzzer::printDateTime(BOOL);
     // Nested class
-    static  class StaticFuzzerInitializer
+    static  class Tracker
     {
     public:
-        StaticFuzzerInitializer();
-        virtual ~StaticFuzzerInitializer();
-        HANDLE hEvent;
-        class Tracker {
-        // TODO: MAKE MEMBERS PRIVATE AND IMPLEMENT PUBLIC ACCESSORS
+        Tracker();
+        virtual ~Tracker();
+        BOOL SetTerminationEvent();
+        BOOL ResetTerminationEvent();
+        BOOL WaitOnTerminationEvent(ULONG);
+        class Stats {
         public:
             VOID print();
             volatile long SentRequests;
@@ -35,8 +36,10 @@ public:
             volatile long CanceledRequests;
             volatile long PendingRequests;
             volatile long AllocatedRequests;
-        } tracker;
-    } s_init; // The event signaled by ctrl-c
+        } stats;
+    private:
+        HANDLE hEvent; // The event signaled by ctrl-c
+    } tracker;
 protected:
     // Vars
     HANDLE hDev;

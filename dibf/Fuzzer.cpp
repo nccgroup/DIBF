@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "AsyncFuzzer.h"
 
-Fuzzer::StaticFuzzerInitializer Fuzzer::s_init;
+Fuzzer::Tracker Fuzzer::tracker;
 
 // Trivial constructor
 Fuzzer::Fuzzer(FuzzingProvider *p) : fuzzingProvider(p)
@@ -12,6 +12,26 @@ Fuzzer::Fuzzer(FuzzingProvider *p) : fuzzingProvider(p)
 // Simple destructor
 Fuzzer::~Fuzzer() {
     delete fuzzingProvider;
+}
+
+BOOL Fuzzer::Tracker::SetTerminationEvent()
+{
+    return SetEvent(hEvent);
+}
+
+BOOL Fuzzer::Tracker::ResetTerminationEvent()
+{
+    return ResetEvent(hEvent);
+}
+
+BOOL Fuzzer::Tracker::WaitOnTerminationEvent(ULONG seconds)
+{
+    BOOL bResult=FALSE;
+
+    if(WAIT_FAILED!=WaitForSingleObject(hEvent, seconds*1000)) {
+        bResult = TRUE;
+    }
+    return bResult;
 }
 
 //DESCRIPTION:
@@ -30,7 +50,7 @@ BOOL __stdcall Fuzzer::CtrlHandler(DWORD fdwCtrlType)
     if(fdwCtrlType==CTRL_C_EVENT || fdwCtrlType==CTRL_BREAK_EVENT)
     {
         // This triggers the end of fuzzing stage
-        SetEvent(s_init.hEvent);
+        tracker.SetTerminationEvent();
         return TRUE;
     }
     return FALSE;
@@ -45,7 +65,7 @@ BOOL __stdcall Fuzzer::CtrlHandler(DWORD fdwCtrlType)
 //OUTPUT:
 // BOOL SUCCESS/FAILURE
 //
-Fuzzer::StaticFuzzerInitializer::StaticFuzzerInitializer()
+Fuzzer::Tracker::Tracker()
 {
     // Create the MANUAL-RESET bail event
     hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
@@ -61,7 +81,7 @@ Fuzzer::StaticFuzzerInitializer::StaticFuzzerInitializer()
     return;
 }
 
-Fuzzer::StaticFuzzerInitializer::~StaticFuzzerInitializer()
+Fuzzer::Tracker::~Tracker()
 {
     if(!SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, FALSE)) {
         TPRINT(VERBOSITY_INFO, L"Failed to unregister control handler\n");
@@ -97,11 +117,11 @@ VOID Fuzzer::printDateTime(BOOL ended)
 // This function prints the cummulative tracked statitists
 //
 //INPUT:
-// pTracker - Pointer to the tracker struct
+// pStats - Pointer to the stats struct
 //
 //OUTPUT:
 // None
-VOID Fuzzer::StaticFuzzerInitializer::Tracker::print()
+VOID Fuzzer::Tracker::Stats::print()
 {
     // Wait for all the volatile writes to go through
     MemoryBarrier();

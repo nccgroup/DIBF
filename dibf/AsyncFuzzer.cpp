@@ -32,7 +32,7 @@ BOOL AsyncFuzzer::init(ULONG nbThreads)
     UINT nbThreadsValid=0;
 
     // Reset termination event
-    bResult = ResetEvent(s_init.hEvent);
+    bResult = tracker.ResetTerminationEvent();
     if(bResult) {
         // Get a valid nb of threads: MAX_THREADS if too big, twice the nb of procs if too small
         if(nbThreads>MAX_THREADS) {
@@ -184,30 +184,30 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
         // NORMAL REQUEST PROCESSING
         if(request) {
             // Accounting for completed requests
-            InterlockedIncrement(&Fuzzer::s_init.tracker.CompletedRequests);
-            InterlockedIncrement(&Fuzzer::s_init.tracker.ASyncRequests);
+            InterlockedIncrement(&Fuzzer::tracker.stats.CompletedRequests);
+            InterlockedIncrement(&Fuzzer::tracker.stats.ASyncRequests);
             if(!bResult) {
                 error = GetLastError();
                 if(error == ERROR_OPERATION_ABORTED) {
                     TPRINT(VERBOSITY_ALL, L"TID[%.4u]: Async request %#.8x (iocode %#.8x) canceled successfully\n", GetCurrentThreadId(), request, request->GetIoCode());
-                    InterlockedIncrement(&Fuzzer::s_init.tracker.CanceledRequests);
+                    InterlockedIncrement(&Fuzzer::tracker.stats.CanceledRequests);
                 }
                 else {
-                    InterlockedIncrement(&Fuzzer::s_init.tracker.FailedRequests);
+                    InterlockedIncrement(&Fuzzer::tracker.stats.FailedRequests);
                     TPRINT(VERBOSITY_ALL, L"TID[%.4u]: Async request %#.8x (iocode %#.8x) completed with error %#.8x\n", GetCurrentThreadId(), request, request->GetIoCode(), GetLastError());
                 }
             }
             else {
-                InterlockedIncrement(&Fuzzer::s_init.tracker.SuccessfulRequests);
+                InterlockedIncrement(&Fuzzer::tracker.stats.SuccessfulRequests);
                 TPRINT(VERBOSITY_ALL, L"TID[%.4u]: Async request %#.8x (iocode %#.8x) completed successfully\n", GetCurrentThreadId(), request, request->GetIoCode());
             }
-            InterlockedDecrement(&Fuzzer::s_init.tracker.PendingRequests);
+            InterlockedDecrement(&Fuzzer::tracker.stats.PendingRequests);
             // All pending request are cleaned up, exit
             if(asyncfuzzer->state==STATE_CLEANUP) {
-                TPRINT(VERBOSITY_ALL, L"TID[%.4u]: Freing request %#.8x (%u currently allocated requests)\n", GetCurrentThreadId(), request, Fuzzer::s_init.tracker.AllocatedRequests);
+                TPRINT(VERBOSITY_ALL, L"TID[%.4u]: Freing request %#.8x (%u currently allocated requests)\n", GetCurrentThreadId(), request, Fuzzer::tracker.stats.AllocatedRequests);
                 delete request;
-                InterlockedDecrement(&Fuzzer::s_init.tracker.AllocatedRequests);
-                if(Fuzzer::s_init.tracker.AllocatedRequests==0) {
+                InterlockedDecrement(&Fuzzer::tracker.stats.AllocatedRequests);
+                if(Fuzzer::tracker.stats.AllocatedRequests==0) {
                     TPRINT(VERBOSITY_INFO, L"TID[%.4u]: Last request was processed - exiting\n", GetCurrentThreadId());
                     asyncfuzzer->state=STATE_DONE;
                     for(UINT i=0; i<asyncfuzzer->startingNbThreads-1; i++) {
@@ -222,13 +222,13 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
             if(!request) {
                 // Loose request allocation limit
                 // TODO: TURN THIS LONG CHECK INTO A FUNCTION THAT CHECKS FOR INT UNDERFLOW
-                if((ULONG)Fuzzer::s_init.tracker.PendingRequests<=asyncfuzzer->maxPending-asyncfuzzer->startingNbThreads && Fuzzer::s_init.tracker.AllocatedRequests<=Fuzzer::s_init.tracker.PendingRequests) {
+                if((ULONG)Fuzzer::tracker.stats.PendingRequests<=asyncfuzzer->maxPending-asyncfuzzer->startingNbThreads && Fuzzer::tracker.stats.AllocatedRequests<=Fuzzer::tracker.stats.PendingRequests) {
                     request = new IoRequest(asyncfuzzer->hDev); // Create new request
-                    TPRINT(VERBOSITY_ALL, L"TID[%u]: Allocating new request in addition to the %u existing ones (%u pending)\n", GetCurrentThreadId(), Fuzzer::s_init.tracker.AllocatedRequests, Fuzzer::s_init.tracker.PendingRequests);
-                    InterlockedIncrement(&Fuzzer::s_init.tracker.AllocatedRequests);
+                    TPRINT(VERBOSITY_ALL, L"TID[%u]: Allocating new request in addition to the %u existing ones (%u pending)\n", GetCurrentThreadId(), Fuzzer::tracker.stats.AllocatedRequests, Fuzzer::tracker.stats.PendingRequests);
+                    InterlockedIncrement(&Fuzzer::tracker.stats.AllocatedRequests);
                 }
                 else {
-                    //TPRINT(VERBOSITY_ALL, L"TID[%u]: ENOUGH REQUESTS ALLOCATED (%d) FOR THE CURRENTLY PENDING NUMBER REQUESTS OF %d\n", GetCurrentThreadId(), Fuzzer::s_init.tracker.AllocatedRequests, Fuzzer::s_init.tracker.PendingRequests);
+                    //TPRINT(VERBOSITY_ALL, L"TID[%u]: ENOUGH REQUESTS ALLOCATED (%d) FOR THE CURRENTLY PENDING NUMBER REQUESTS OF %d\n", GetCurrentThreadId(), Fuzzer::tracker.stats.AllocatedRequests, Fuzzer::tracker.stats.PendingRequests);
                     break;
                 }
             }
@@ -238,7 +238,7 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
             }
             if(!request) {
                 // TODO: WHAT THEN?
-                TPRINT(VERBOSITY_ERROR, L"TID[%.4u]: Failed to allocate new request (keep going with existing %u request allocations)\n", GetCurrentThreadId(), Fuzzer::s_init.tracker.AllocatedRequests);
+                TPRINT(VERBOSITY_ERROR, L"TID[%.4u]: Failed to allocate new request (keep going with existing %u request allocations)\n", GetCurrentThreadId(), Fuzzer::tracker.stats.AllocatedRequests);
                 break;
             }
             // Craft a fuzzed request
@@ -248,7 +248,7 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
                 // Fire IOCTL
                 status = request->sendAsync();
                 TPRINT(VERBOSITY_ALL, L"TID[%.4u]: Sent request %#.8x (iocode %#.8x)\n", GetCurrentThreadId(), request, request->GetIoCode());
-                InterlockedIncrement(&Fuzzer::s_init.tracker.SentRequests);
+                InterlockedIncrement(&Fuzzer::tracker.stats.SentRequests);
                 // Handle pending IOs
                 if(status==DIBF_PENDING) {
                     // Cancel a portion of requests
@@ -263,20 +263,20 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
                         }
                     }
                     // Whether cancellation was sent or not, the request is pending
-                    InterlockedIncrement(&Fuzzer::s_init.tracker.PendingRequests);
+                    InterlockedIncrement(&Fuzzer::tracker.stats.PendingRequests);
                     // Will need a brand new request
                     request=NULL;
                 }
                 else {
                     // Displaying synchronous completion result
-                    InterlockedIncrement(&Fuzzer::s_init.tracker.CompletedRequests);
-                    InterlockedIncrement(&Fuzzer::s_init.tracker.SynchronousRequests);
+                    InterlockedIncrement(&Fuzzer::tracker.stats.CompletedRequests);
+                    InterlockedIncrement(&Fuzzer::tracker.stats.SynchronousRequests);
                     if(status==DIBF_SUCCESS){
-                        InterlockedIncrement(&Fuzzer::s_init.tracker.SuccessfulRequests);
+                        InterlockedIncrement(&Fuzzer::tracker.stats.SuccessfulRequests);
                         TPRINT(VERBOSITY_ALL, L"TID[%.4u]: Request %#.8x (iocode %#.8x) synchronously completed successfully\n", GetCurrentThreadId(), request, request->GetIoCode());
                     }
                     else {
-                        InterlockedIncrement(&Fuzzer::s_init.tracker.FailedRequests);
+                        InterlockedIncrement(&Fuzzer::tracker.stats.FailedRequests);
                         TPRINT(VERBOSITY_ALL, L"TID[%.4u]: Request %#.8x (iocode %#.8x) synchronously completed with error %#.8x\n", GetCurrentThreadId(), request, request->GetIoCode(), GetLastError());
                     }
                 }
@@ -302,7 +302,7 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
 // timeLimit - an array containing the 3 timouts (for each fuzzer)
 // maxPending - the max number of pending requests for the async fuzzer
 // cancelRate - percentage of pending requests to attempt to cancel for the async fuzzer
-// pTracker - the statistics tracker pointer
+// pStats - the statistics stats pointer
 //OUTPUT:
 // TRUE for success
 // FALSE for error
@@ -323,8 +323,8 @@ BOOL AsyncFuzzer::start()
         TPRINT(VERBOSITY_ERROR, L"Failed to post completion status to completion port\n");
     }
     // Wait for ctrl-c or timout
-    waitResult = WaitForSingleObject(s_init.hEvent, timeLimit*1000);
-    if(waitResult!=WAIT_FAILED) {
+    bResult = tracker.WaitOnTerminationEvent(timeLimit);
+    if(bResult) {
         state=STATE_CLEANUP;
             waitResult = WaitForMultipleObjects(startingNbThreads, threads, TRUE, INFINITE);
             if(waitResult==WAIT_OBJECT_0) {
