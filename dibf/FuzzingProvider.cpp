@@ -5,17 +5,28 @@
 #define HIGH_WORD(DWORD) ((DWORD&0xffff0000)>>16)
 
 // Empty constructor and destructor
-FuzzingProvider::FuzzingProvider() {}
-FuzzingProvider::~FuzzingProvider() {}
-
-Dumbfuzzer::Dumbfuzzer(IoctlStorage* ioctlStorage) : ioStore(ioctlStorage)
+FuzzingProvider::FuzzingProvider()
 {
-    // Init PRNG seed
-    srand((UINT)0x9c3a168f^GetTickCount());
+    TPRINT(VERBOSITY_DEBUG, L"FuzzingProvider constructor\n");
+    return;
+}
+FuzzingProvider::~FuzzingProvider()
+{
+    TPRINT(VERBOSITY_DEBUG, L"FuzzingProvider destructor\n");
     return;
 }
 
-Dumbfuzzer::~Dumbfuzzer() {}
+Dumbfuzzer::Dumbfuzzer(IoctlStorage* ioctlStorage) : ioStore(ioctlStorage)
+{
+    TPRINT(VERBOSITY_DEBUG, L"Dumbfuzzer constructor\n");
+    return;
+}
+
+Dumbfuzzer::~Dumbfuzzer()
+{
+    TPRINT(VERBOSITY_DEBUG, L"Dumbfuzzer destructor\n");
+    return;
+}
 
 BOOL Dumbfuzzer::fuzzRequest(IoRequest *request, std::mt19937 *threadRandomProvider)
 {

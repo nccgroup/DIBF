@@ -5,6 +5,7 @@
 
 AsyncFuzzer::AsyncFuzzer(HANDLE hDevice, ULONG timeLimit, ULONG maxPending, ULONG cancelRate, FuzzingProvider *provider) : Fuzzer(provider)
 {
+    TPRINT(VERBOSITY_DEBUG, L"AsyncFuzzer constructor\n");
     this->hDev = hDevice;
     this->currentNbThreads = 0;
     this->startingNbThreads = 0;
@@ -16,6 +17,7 @@ AsyncFuzzer::AsyncFuzzer(HANDLE hDevice, ULONG timeLimit, ULONG maxPending, ULON
 
 AsyncFuzzer::~AsyncFuzzer()
 {
+    TPRINT(VERBOSITY_DEBUG, L"AsyncFuzzer destructor\n");
     // Close all handles array
     for(ULONG i=0; i<startingNbThreads&&threads[i]; i++) {
         CloseHandle(threads[i]);
@@ -144,12 +146,11 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
     ULONG_PTR specialPacket;
     LPOVERLAPPED pOvrlp;
     IoRequest *request;
+
+    // Get asyncfuzzer
     AsyncFuzzer *asyncfuzzer = (AsyncFuzzer*)param;
-
-    // TODO: put in separate function and disable warning
-    // Initialize thread's PRNG
+    // Initialize thread's PRNG (TODO: get rid of warning)
     std::mt19937 prng = std::mt19937(UNLFOLD_LOW_WORD(GetCurrentThreadId())^GetTickCount());
-
     do {
         // Dequeue I/O packet
         bResult = GetQueuedCompletionStatus(asyncfuzzer->hIocp, &nbOfBytes, &specialPacket, &pOvrlp, INFINITE);
@@ -260,12 +261,12 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
                     // Cancel a portion of requests
                     canceled=FALSE;
                     if((ULONG)(rand()%100)<asyncfuzzer->cancelRate) {
-                        // TODO: get rid of compilation warning C4706
-                        if(!(canceled = CancelIoEx(asyncfuzzer->hDev, &request->overlp))) {
-                            TPRINT(VERBOSITY_ALL, L"TID[%.4u]: Failed to attempt cancelation of request %#.8x (iocode %#.8x), error %#.8x\n", GetCurrentThreadId(), request, request->GetIoCode(), GetLastError());
+                        canceled = CancelIoEx(asyncfuzzer->hDev, &request->overlp);
+                        if(canceled) {
+                            TPRINT(VERBOSITY_ALL, L"TID[%.4u]: Sent a cancel for request %#.8x (iocode %#.8x)\n", GetCurrentThreadId(), request, request->GetIoCode());
                         }
                         else {
-                            TPRINT(VERBOSITY_ALL, L"TID[%.4u]: Sent a cancel for request %#.8x (iocode %#.8x)\n", GetCurrentThreadId(), request, request->GetIoCode());
+                            TPRINT(VERBOSITY_ALL, L"TID[%.4u]: Failed to attempt cancelation of request %#.8x (iocode %#.8x), error %#.8x\n", GetCurrentThreadId(), request, request->GetIoCode(), GetLastError());
                         }
                     }
                     // Whether cancellation was sent or not, the request is pending
@@ -334,6 +335,7 @@ BOOL AsyncFuzzer::start()
         state=STATE_CLEANUP;
             waitResult = WaitForMultipleObjects(startingNbThreads, threads, TRUE, INFINITE);
             if(waitResult==WAIT_OBJECT_0) {
+                TPRINT(VERBOSITY_INFO, L"All fuzzer threads exited timely\n");
                 bResult = TRUE;
             }
             else {

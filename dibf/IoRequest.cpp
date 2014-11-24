@@ -13,13 +13,11 @@ const DWORD IoRequest::invalidIoctlErrorCodes[] = {
 // Simple constructors
 IoRequest::IoRequest(HANDLE hDev) : hDev(hDev), inBuf(NULL), outBuf(NULL), inSize(0), outSize(0)
 {
-    // TPRINT(VERBOSITY_INFO, L"TID[%x]: NEW REQUEST %#.8x ALLOCATED\n", GetCurrentThreadId(), this);
     ZeroMemory(&overlp, sizeof(overlp));
 }
 
 IoRequest::IoRequest(HANDLE hDev, DWORD code) : hDev(hDev), iocode(code), inBuf(NULL), outBuf(NULL), inSize(0), outSize(0)
 {
-    // TPRINT(VERBOSITY_INFO, L"TID[%x]: NEW REQUEST %#.8x ALLOCATED\n", GetCurrentThreadId(), this);
     ZeroMemory(&overlp, sizeof(overlp));
 }
 
@@ -31,7 +29,6 @@ VOID IoRequest::reset()
 
 IoRequest::~IoRequest()
 {
-    // TPRINT(VERBOSITY_ALL, L"TID[%x]: FREEING REQUEST %x\n", GetCurrentThreadId(), this);
     if(inBuf) {
         HeapFree(GetProcessHeap(), 0x0, inBuf);
     }

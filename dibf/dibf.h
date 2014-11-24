@@ -7,19 +7,20 @@ class Dibf {
 public:
     // Constructor & Destructor
     Dibf();
-    virtual ~Dibf();
+    ~Dibf();
     // Functions
     BOOL start(INT, _TCHAR**);
-    BOOL readAndValidateCommandLineUlong(LPTSTR, ULONG, ULONG, PULONG, BOOL);
-    BOOL DoAllBruteForce(PTSTR, DWORD, DWORD, BOOL);
-    BOOL BruteForceIOCTLs(DWORD, DWORD, BOOL);
-    BOOL BruteForceBufferSizes();
-    BOOL ReadBruteforceResult(TCHAR*, IoctlStorage*, PDWORD);
-    BOOL WriteBruteforceResult(TCHAR*, IoctlStorage*);
-    VOID FuzzIOCTLs(HANDLE, IoctlStorage*, DWORD, ULONG, PULONG, ULONG, ULONG);
-    VOID usage(void);
 private:
     // Vars
     HANDLE hDevice;
     IoctlStorage IOCTLStorage; //TODO: add size-returning functionality to ReadBruteforceResult to be able to only allocate on heap what's needed
+    // Functions
+    BOOL readAndValidateCommandLineUlong(LPTSTR, ULONG, ULONG, PULONG, BOOL);
+    BOOL DoAllBruteForce(PTSTR, DWORD, DWORD, BOOL);
+    BOOL BruteForceIOCTLs(DWORD, DWORD, BOOL);
+    BOOL BruteForceBufferSizes();
+    BOOL ReadBruteforceResult(TCHAR*, IoctlStorage*);
+    BOOL WriteBruteforceResult(TCHAR*, IoctlStorage*);
+    VOID FuzzIOCTLs(HANDLE, IoctlStorage*, DWORD, ULONG, PULONG, ULONG, ULONG);
+    VOID usage(void);
 };

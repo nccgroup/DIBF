@@ -10,13 +10,19 @@
 #include "dibf.h"
 #include "AsyncFuzzer.h"
 
-Dibf::Dibf() : hDevice(INVALID_HANDLE_VALUE) {}
+Dibf::Dibf() : hDevice(INVALID_HANDLE_VALUE)
+{
+    TPRINT(VERBOSITY_DEBUG, L"Dibf constructor\n");
+    return;
+}
 
 Dibf::~Dibf()
 {
+    TPRINT(VERBOSITY_DEBUG, L"Dibf destructor\n");
     if(hDevice!=INVALID_HANDLE_VALUE) {
         CloseHandle(hDevice);
     }
+    return;
 }
 
 //DESCRIPTION:
@@ -83,7 +89,7 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
     INT i;
     TCHAR pDeviceName[MAX_PATH];
     BOOL bDeepBruteForce=FALSE, bIoctls=FALSE, validUsage=TRUE, bIgnoreFile=FALSE, gotDeviceName=FALSE;
-    DWORD dwIOCTLStart=START_IOCTL_VALUE, dwIOCTLEnd=END_IOCTL_VALUE, dwFuzzStage=0xf, dwIOCTLCount=0;
+    DWORD dwIOCTLStart=START_IOCTL_VALUE, dwIOCTLEnd=END_IOCTL_VALUE, dwFuzzStage=0xf;
     ULONG maxThreads=0, timeLimits[3]={INFINITE, INFINITE,INFINITE}, cancelRate=CANCEL_RATE, maxPending=MAX_PENDING;
 
     for(i=1; validUsage && i<argc; i++) {
@@ -204,7 +210,8 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
         // Unless -i
         if(!bIgnoreFile) {
             // Attempt to read file
-            bIoctls = ReadBruteforceResult(pDeviceName, &IOCTLStorage, &this->IOCTLStorage.count);
+            TPRINT(VERBOSITY_DEFAULT, L"<<<< CAPTURING IOCTL DEFINITIONS FROM FILE >>>>\n");
+            bIoctls = ReadBruteforceResult(pDeviceName, &IOCTLStorage);
             if(!bIoctls) {
                 TPRINT(VERBOSITY_ERROR, L"Failed to read IOCTLs data from file, attempting bruteforce\n");
             }
@@ -212,6 +219,7 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
         // If we don't have thee ioctls defs from file
         if(!bIoctls) {
             // Open the device based on the file name passed from params, fuzz the IOCTLs and return the device handle
+            TPRINT(VERBOSITY_DEFAULT, L"<<<< GUESSING IOCTLS >>>>\n");
             bIoctls = DoAllBruteForce(pDeviceName, dwIOCTLStart, dwIOCTLEnd, bDeepBruteForce);
             if(!bIoctls) {
                 TPRINT(VERBOSITY_ERROR, L"Failed to guess IOCTLs, exiting\n");
@@ -226,7 +234,6 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
             }
             if(hDevice!=INVALID_HANDLE_VALUE) {
                 // Got a valid handle and valid IOCTLS to fuzz, onto actual fuzzing
-                TPRINT(VERBOSITY_INFO, L"Fuzzing %d IOCTLs on device %s\n", dwIOCTLCount, pDeviceName);
                 FuzzIOCTLs(hDevice, &IOCTLStorage, dwFuzzStage, maxThreads, timeLimits, maxPending, cancelRate);
             }
             else {
@@ -400,7 +407,7 @@ BOOL Dibf::WriteBruteforceResult(TCHAR *pDeviceName, IoctlStorage *pIOCTLStorage
 // Populates pDeviceName, pIOCTLStorage and dwIOCTLCount. Returns a bool indicating
 // if the read was successful or not.
 //
-BOOL Dibf::ReadBruteforceResult(TCHAR *pDeviceName, IoctlStorage *pIOCTLStorage, PDWORD dwIOCTLCount)
+BOOL Dibf::ReadBruteforceResult(TCHAR *pDeviceName, IoctlStorage *pIOCTLStorage)
 {
     HANDLE hFile=INVALID_HANDLE_VALUE;
     DWORD error, dwFileSize, dwBytesRead, dwIOCTLIndex = 0;
@@ -434,7 +441,7 @@ BOOL Dibf::ReadBruteforceResult(TCHAR *pDeviceName, IoctlStorage *pIOCTLStorage,
                             TPRINT(VERBOSITY_INFO, L" Device name: %s\n", pDeviceName);
                             TPRINT(VERBOSITY_INFO, L" Number of IOCTLs: %d\n", dwIOCTLIndex);
                             // Write back the number of IOCTLs
-                            *dwIOCTLCount = dwIOCTLIndex;
+                            pIOCTLStorage->count = dwIOCTLIndex;
                             bResult = TRUE;
                         }
                         else{

@@ -12,9 +12,9 @@ public:
     IoRequest();
     IoRequest(HANDLE);
     IoRequest(HANDLE, DWORD);
+    ~IoRequest();
     DWORD GetIoCode() {return iocode;}
     VOID SetIoCode(DWORD iocode) {this->iocode=iocode;}
-    virtual ~IoRequest();
     OVERLAPPED overlp;
     BOOL testSendForValidRequest(BOOL);
     VOID reset();

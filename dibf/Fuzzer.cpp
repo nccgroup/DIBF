@@ -1,16 +1,19 @@
 #include "stdafx.h"
 #include "AsyncFuzzer.h"
 
+// Static tracker
 Fuzzer::Tracker Fuzzer::tracker;
 
 // Trivial constructor
 Fuzzer::Fuzzer(FuzzingProvider *p) : fuzzingProvider(p)
 {
+    TPRINT(VERBOSITY_DEBUG, L"Fuzzer constructor\n");
     state=STATE_FUZZING;
 }
 
 // Simple destructor
 Fuzzer::~Fuzzer() {
+    TPRINT(VERBOSITY_DEBUG, L"Fuzzer destructor\n");
     delete fuzzingProvider;
 }
 

@@ -5,6 +5,8 @@
 
 #include "stdafx.h"
 
+// #define DEBUG
+
 // Printing macro (bad nico)
 #define TPRINT(verbose, format, ...) \
     if ((LONG)verbose<=(LONG)g_verbose) { \
@@ -16,6 +18,11 @@
 #define VERBOSITY_ERROR 1
 #define VERBOSITY_INFO 2
 #define VERBOSITY_ALL 3
+#ifdef DEBUG
+#define VERBOSITY_DEBUG 0
+#else
+#define VERBOSITY_DEBUG 4
+#endif
 
 // Ioctl guessing vars
 #define START_IOCTL_VALUE 0x00100000
@@ -38,7 +45,7 @@ class IoctlStorage
 {
 public:
     IoctlStorage();
-    virtual ~IoctlStorage();
+    ~IoctlStorage();
 private:
     class IoctlDef
     {

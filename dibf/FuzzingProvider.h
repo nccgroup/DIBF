@@ -14,10 +14,10 @@ public:
 
 class Dumbfuzzer : public FuzzingProvider
 {
-private:
-    IoctlStorage* ioStore;
 public:
-    BOOL fuzzRequest(IoRequest*, std::mt19937*);
     Dumbfuzzer(IoctlStorage*);
     virtual ~Dumbfuzzer();
+    BOOL fuzzRequest(IoRequest*, std::mt19937*);
+private:
+    IoctlStorage* ioStore;
 };

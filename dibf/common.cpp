@@ -6,11 +6,13 @@ ULONG g_verbose=VERBOSITY_ERROR; // VERBOSITY_DEFAULT is VERBOSITY_ERROR
 
 IoctlStorage::IoctlStorage()
 {
+    TPRINT(VERBOSITY_DEBUG, L"IoctlStorage constructor\n");
     ioctls = (IoctlDef*)HeapAlloc(GetProcessHeap(), 0, sizeof(IoctlDef)*MAX_IOCTLS);
 }
 
 IoctlStorage::~IoctlStorage()
 {
+    TPRINT(VERBOSITY_DEBUG, L"IoctlStorage destructor\n");
     HeapFree(GetProcessHeap(), 0, ioctls);
 }
 
