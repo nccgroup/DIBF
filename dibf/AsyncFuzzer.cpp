@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "AsyncFuzzer.h"
 
+#define UNLFOLD_LOW_WORD(DWORD) ((DWORD<<16)|(DWORD&0xffff))
+
 AsyncFuzzer::AsyncFuzzer(HANDLE hDevice, ULONG timeLimit, ULONG maxPending, ULONG cancelRate, FuzzingProvider *provider) : Fuzzer(provider)
 {
     this->hDev = hDevice;
@@ -144,6 +146,10 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
     IoRequest *request;
     AsyncFuzzer *asyncfuzzer = (AsyncFuzzer*)param;
 
+    // TODO: put in separate function and disable warning
+    // Initialize thread's PRNG
+    std::mt19937 prng = std::mt19937(UNLFOLD_LOW_WORD(GetCurrentThreadId())^GetTickCount());
+
     do {
         // Dequeue I/O packet
         bResult = GetQueuedCompletionStatus(asyncfuzzer->hIocp, &nbOfBytes, &specialPacket, &pOvrlp, INFINITE);
@@ -242,7 +248,7 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
                 break;
             }
             // Craft a fuzzed request
-            bResult = asyncfuzzer->fuzzingProvider->fuzzRequest(request);
+            bResult = asyncfuzzer->fuzzingProvider->fuzzRequest(request, &prng);
             // If request fuzzed and ready for sending
             if(bResult) {
                 // Fire IOCTL
