@@ -125,6 +125,19 @@ BOOL AsyncFuzzer::InitializeThreadsAndCompletionPort()
     return bResult;
 }
 
+BOOL _inline AsyncFuzzer::AllowNewAllocation()
+{
+    BOOL allow=FALSE;
+    ULONG looseMaxPending;
+
+    looseMaxPending = (maxPending>startingNbThreads) ? maxPending-startingNbThreads : maxPending;
+    if((ULONG)tracker.stats.PendingRequests<=looseMaxPending && tracker.stats.AllocatedRequests<=tracker.stats.PendingRequests) {
+        allow=TRUE;
+    }
+    return allow;
+}
+
+
 //DESCRIPTION:
 // This function is the thread proc for the async fuzzer. It dequeues requests from the io completion port,
 // handles special control OVERLAPPED requests, fires IOCTLS asyncrhonously until the set maximum is reached and
@@ -228,8 +241,7 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
         while(asyncfuzzer->state==STATE_FUZZING) {
             if(!request) {
                 // Loose request allocation limit
-                // TODO: TURN THIS LONG CHECK INTO A FUNCTION THAT CHECKS FOR INT UNDERFLOW
-                if((ULONG)Fuzzer::tracker.stats.PendingRequests<=asyncfuzzer->maxPending-asyncfuzzer->startingNbThreads && Fuzzer::tracker.stats.AllocatedRequests<=Fuzzer::tracker.stats.PendingRequests) {
+                if(asyncfuzzer->AllowNewAllocation()) {
                     request = new IoRequest(asyncfuzzer->hDev); // Create new request
                     TPRINT(VERBOSITY_ALL, L"TID[%u]: Allocating new request in addition to the %u existing ones (%u pending)\n", GetCurrentThreadId(), Fuzzer::tracker.stats.AllocatedRequests, Fuzzer::tracker.stats.PendingRequests);
                     InterlockedIncrement(&Fuzzer::tracker.stats.AllocatedRequests);

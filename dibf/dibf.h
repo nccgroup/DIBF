@@ -13,7 +13,7 @@ public:
 private:
     // Vars
     HANDLE hDevice;
-    IoctlStorage IOCTLStorage; //TODO: add size-returning functionality to ReadBruteforceResult to be able to only allocate on heap what's needed
+    IoctlStorage IOCTLStorage;
     // Functions
     BOOL readAndValidateCommandLineUlong(LPTSTR, ULONG, ULONG, PULONG, BOOL);
     BOOL DoAllBruteForce(PTSTR, DWORD, DWORD, BOOL);

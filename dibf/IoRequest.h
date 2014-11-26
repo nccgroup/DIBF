@@ -17,12 +17,15 @@ public:
     VOID SetIoCode(DWORD iocode) {this->iocode=iocode;}
     OVERLAPPED overlp;
     BOOL testSendForValidRequest(BOOL);
+    BOOL testSendForValidBufferSize(DWORD);
     VOID reset();
     DWORD sendAsync();
     BOOL allocBuffers(DWORD, DWORD);
     UCHAR *getInbuf();
 private:
+    // Static arrays of known interesting errors
     static const DWORD invalidIoctlErrorCodes[];
+    static const DWORD invalidBufSizeErrorCodes[];
     // Members
     HANDLE hDev;
     DWORD iocode;
@@ -33,5 +36,4 @@ private:
     DWORD bytesreturned;
     // Functions
     BOOL sendRequest(BOOL, PDWORD);
-    static BOOL isValid(DWORD);
 };

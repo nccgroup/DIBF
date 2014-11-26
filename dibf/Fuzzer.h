@@ -20,7 +20,7 @@ public:
     {
     public:
         Tracker();
-        virtual ~Tracker();
+        ~Tracker();
         BOOL SetTerminationEvent();
         BOOL ResetTerminationEvent();
         BOOL WaitOnTerminationEvent(ULONG);

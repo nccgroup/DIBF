@@ -61,7 +61,8 @@ BOOL Dibf::DoAllBruteForce(PTSTR pDeviceName, DWORD dwIOCTLStart, DWORD dwIOCTLE
     hDevice = CreateFile(pDeviceName, MAXIMUM_ALLOWED, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
     if(hDevice!=INVALID_HANDLE_VALUE) {
         //Bruteforce IOCTLs
-        TPRINT(VERBOSITY_DEFAULT, L"<< Bruteforcing IOCTLs >>\n");
+        TPRINT(VERBOSITY_DEFAULT, L"<<<< GUESSING IOCTLS %s>>>>\n", deep?L"(DEEP MODE)":L"");
+        TPRINT(VERBOSITY_INFO, L"Bruteforcing ioctl codes\n");
         bResult = BruteForceIOCTLs(dwIOCTLStart, dwIOCTLEnd, deep);
         if(bResult) {
             TPRINT(VERBOSITY_DEFAULT, L"---------------------------------------\n\n");
@@ -69,7 +70,6 @@ BOOL Dibf::DoAllBruteForce(PTSTR pDeviceName, DWORD dwIOCTLStart, DWORD dwIOCTLE
             bResult = BruteForceBufferSizes();
             if(bResult) {
                 TPRINT(VERBOSITY_DEFAULT, L"---------------------------------------\n\n");
-                TPRINT(VERBOSITY_INFO, L"Writing bruteforce results to file\n");
                 WriteBruteforceResult(pDeviceName, &IOCTLStorage);
             }
         }
@@ -198,6 +198,7 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
         else {
             // This is the last parameter
             if(i==argc-1) {
+                // TODO: FIX CASE WHERE NO DEVICE NAME IS GIVEN (JUST ERROR CHECKING ON COPY BELOW?)
                 _tcsncpy_s(pDeviceName, MAX_PATH, argv[i], _TRUNCATE);
                 gotDeviceName = TRUE;
             }
@@ -212,14 +213,10 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
             // Attempt to read file
             TPRINT(VERBOSITY_DEFAULT, L"<<<< CAPTURING IOCTL DEFINITIONS FROM FILE >>>>\n");
             bIoctls = ReadBruteforceResult(pDeviceName, &IOCTLStorage);
-            if(!bIoctls) {
-                TPRINT(VERBOSITY_ERROR, L"Failed to read IOCTLs data from file, attempting bruteforce\n");
-            }
         }
         // If we don't have thee ioctls defs from file
         if(!bIoctls) {
             // Open the device based on the file name passed from params, fuzz the IOCTLs and return the device handle
-            TPRINT(VERBOSITY_DEFAULT, L"<<<< GUESSING IOCTLS >>>>\n");
             bIoctls = DoAllBruteForce(pDeviceName, dwIOCTLStart, dwIOCTLEnd, bDeepBruteForce);
             if(!bIoctls) {
                 TPRINT(VERBOSITY_ERROR, L"Failed to guess IOCTLs, exiting\n");
@@ -257,31 +254,31 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
 // bVerbose - Boolean telling us if we want verbose output or not.
 //
 //OUTPUT:
-// Last index into pIOCTLStorage array (count of found IOCTLs - 1).
-//
+// FALSE if no ioctl was found, TRUE otherwise
+// TODO: CTRL-C INTERRUPTS RUN (OOP?)
 BOOL Dibf::BruteForceIOCTLs(DWORD dwIOCTLStart, DWORD dwIOCTLEnd, BOOL bDeepBruteForce)
 {
-    DWORD dwIOCTL=dwIOCTLStart, dwIOCTLIndex=0;
-    IoRequest ioRequest(hDevice, dwIOCTL);  // This unique request gets reused iteratively
+    DWORD dwIOCTL, dwIOCTLIndex=0;
+    IoRequest ioRequest(hDevice);  // This unique request gets reused iteratively
 
-    while(dwIOCTL<dwIOCTLEnd) {
+    TPRINT(VERBOSITY_ALL, L"%x, %x, %u\n", dwIOCTLStart, dwIOCTLEnd, bDeepBruteForce);
+    for(dwIOCTL=dwIOCTLStart; dwIOCTL<=dwIOCTLEnd; dwIOCTL++) {
         ioRequest.SetIoCode(dwIOCTL);
         if(ioRequest.testSendForValidRequest(bDeepBruteForce)) {
             if(dwIOCTLIndex<MAX_IOCTLS) {
-                TPRINT(VERBOSITY_INFO, L" Found IOCTL %#.8x\n", dwIOCTL);
                 IOCTLStorage.ioctls[dwIOCTLIndex++].dwIOCTL = dwIOCTL;
             }
             else {
-                TPRINT(VERBOSITY_ERROR, L" Found IOCTL but out of storage space, stopping bruteforce\n");
+                TPRINT(VERBOSITY_ERROR, L"Found IOCTL but out of storage space, stopping bruteforce\n");
                 return MAX_IOCTLS;
             }
         }
         if(dwIOCTL % 0x010000 == 0) {
             TPRINT(VERBOSITY_INFO, L"Current iocode: %#.8x (found %u ioctls so far)\n", dwIOCTL, dwIOCTLIndex);
         }
-        dwIOCTL++;
     }
-    this->IOCTLStorage.count = dwIOCTLIndex+1;
+    IOCTLStorage.count=dwIOCTLIndex;
+    TPRINT(VERBOSITY_ALL, L"Found %u ioctls\n", dwIOCTLIndex);
     return dwIOCTLIndex!=0;
 }
 
@@ -302,52 +299,34 @@ BOOL Dibf::BruteForceIOCTLs(DWORD dwIOCTLStart, DWORD dwIOCTLEnd, BOOL bDeepBrut
 BOOL Dibf::BruteForceBufferSizes()
 {
     BOOL bResult=TRUE;
-    PBYTE pDummyBuffer=NULL;
-    DWORD i=0, dwCurrentSize, dwBytesReturned;
+    DWORD dwCurrentSize, dwBytesReturned;
+    IoRequest ioRequest(hDevice);  // This unique request gets reused iteratively
 
-    pDummyBuffer = (PBYTE)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, 8192);
-    if(pDummyBuffer) {
-        while((i<MAX_IOCTLS) && (IOCTLStorage.ioctls[i].dwIOCTL!=0)) {
-            TPRINT(VERBOSITY_INFO, L" Working on IOCTL %#.8x\n", IOCTLStorage.ioctls[i].dwIOCTL);
-            //find lower size edge
-            dwCurrentSize = 0;
-            while((dwCurrentSize<MAX_BUFSIZE)
-                && (!DeviceIoControl(hDevice, IOCTLStorage.ioctls[i].dwIOCTL, pDummyBuffer, dwCurrentSize, pDummyBuffer, MAX_BUFSIZE, &dwBytesReturned, NULL))
-                && (GetLastError()==ERROR_INVALID_PARAMETER)) {
-                    dwCurrentSize++;
+    for(ULONG i=0; i<IOCTLStorage.count; i++) {
+        TPRINT(VERBOSITY_INFO, L" Working on IOCTL %#.8x\n", IOCTLStorage.ioctls[i].dwIOCTL);
+        // Find lower size edge
+        ioRequest.SetIoCode(IOCTLStorage.ioctls[i].dwIOCTL);
+        dwCurrentSize = 0;
+        while((dwCurrentSize<MAX_BUFSIZE) && !ioRequest.testSendForValidBufferSize(dwCurrentSize)) {
+            dwCurrentSize++;
+        }
+        // If an IOCTL either requires a buffer larger than supported or performs a strict check on the outgoing buffer
+        if(dwCurrentSize==MAX_BUFSIZE) {
+            TPRINT(VERBOSITY_ALL, L" Failed to find lower edge. Skipping.\n");
+            IOCTLStorage.ioctls[i].dwLowerSize = 0;
+            IOCTLStorage.ioctls[i].dwUpperSize = (DWORD)(-1);
+        }
+        else {
+            TPRINT(VERBOSITY_ALL, L" Found lower size edge at %d bytes\n", dwCurrentSize);
+            IOCTLStorage.ioctls[i].dwLowerSize = dwCurrentSize;
+            // Find upper size edge
+            while((dwCurrentSize<MAX_BUFSIZE) && ioRequest.testSendForValidBufferSize(dwCurrentSize)) {
+                dwCurrentSize++;
             }
-            //If an IOCTL either
-            //1. Requires a buffer larger than supported
-            //or
-            //2. Performs a strict check on the outgoing buffer
-            //we will hit this if statement.
-            if(dwCurrentSize>=8192) {
-                TPRINT(VERBOSITY_ALL, L" Failed to find lower edge. Skipping.\n");
-                IOCTLStorage.ioctls[i].dwLowerSize = -1;
-                IOCTLStorage.ioctls[i].dwUpperSize = -1;
-            }
-            else {
-                TPRINT(VERBOSITY_ALL, L" Found lower size edge at %d bytes\n", dwCurrentSize);
-                IOCTLStorage.ioctls[i].dwLowerSize = dwCurrentSize;
-                //find upper size edge
-                dwCurrentSize = -1;
-                while((dwCurrentSize >= IOCTLStorage.ioctls[i].dwLowerSize)
-                    && (!DeviceIoControl(hDevice, IOCTLStorage.ioctls[i].dwIOCTL, pDummyBuffer, dwCurrentSize, pDummyBuffer, MAX_BUFSIZE, &dwBytesReturned, NULL))
-                    && (GetLastError()==ERROR_INVALID_PARAMETER)) {
-                        dwCurrentSize--;
-                }
-                TPRINT(VERBOSITY_ALL, L" Found upper size edge at %d bytes\n", dwCurrentSize);
-                IOCTLStorage.ioctls[i].dwUpperSize = dwCurrentSize;
-            }
-            //go to next IOCTL
-            i++;
-        } // while
-        HeapFree(GetProcessHeap(), 0, pDummyBuffer);
-    } // if pDummyBuffer
-    else {
-        bResult = FALSE;
-        TPRINT(VERBOSITY_ERROR, L"Failed to allocate dummy buffer\n");
-    }
+            TPRINT(VERBOSITY_ALL, L" Found upper size edge at %d bytes\n", dwCurrentSize);
+            IOCTLStorage.ioctls[i].dwUpperSize = dwCurrentSize;
+        }
+    } // while
     return bResult;
 }
 
@@ -372,14 +351,16 @@ BOOL Dibf::WriteBruteforceResult(TCHAR *pDeviceName, IoctlStorage *pIOCTLStorage
     if(hFile!=INVALID_HANDLE_VALUE) {
         //write device name
         if(-1!=_sntprintf_s(cScratchBuffer, MAX_PATH, _TRUNCATE, L"%s\n", pDeviceName)) {
-            if(WriteFile(hFile, cScratchBuffer, _tcslen(cScratchBuffer)*sizeof(TCHAR), &dwBytesWritten, NULL)) {
-                //write all IOCTLs and their sizes
-                while((i<MAX_IOCTLS) && (pIOCTLStorage->ioctls[i].dwIOCTL!=0)) {
-                    _sntprintf_s(cScratchBuffer, MAX_PATH, _TRUNCATE, L"%x %d %d\n", pIOCTLStorage->ioctls[i].dwIOCTL, pIOCTLStorage->ioctls[i].dwLowerSize, pIOCTLStorage->ioctls[i].dwUpperSize);
-                    WriteFile(hFile, cScratchBuffer, _tcslen(cScratchBuffer)*sizeof(TCHAR), &dwBytesWritten, NULL);
-                    i++;
-                }
-            } // if WriteFile
+            bResult = WriteFile(hFile, cScratchBuffer, _tcslen(cScratchBuffer)*sizeof(TCHAR), &dwBytesWritten, NULL);
+            //write all IOCTLs and their sizes
+            while(bResult && (i<MAX_IOCTLS) && (pIOCTLStorage->ioctls[i].dwIOCTL!=0)) {
+                _sntprintf_s(cScratchBuffer, MAX_PATH, _TRUNCATE, L"%x %d %d\n", pIOCTLStorage->ioctls[i].dwIOCTL, pIOCTLStorage->ioctls[i].dwLowerSize, pIOCTLStorage->ioctls[i].dwUpperSize);
+                bResult = WriteFile(hFile, cScratchBuffer, _tcslen(cScratchBuffer)*sizeof(TCHAR), &dwBytesWritten, NULL);
+                i++;
+            }
+            if(bResult) {
+                TPRINT(VERBOSITY_INFO, L"Successfully written IOCTLs data to log file %s\n", DIBF_BF_LOG_FILE);
+            }
             else {
                 TPRINT(VERBOSITY_ERROR, L"Error writing to log file %s, %d\n", DIBF_BF_LOG_FILE, GetLastError());
             }
@@ -435,6 +416,7 @@ BOOL Dibf::ReadBruteforceResult(TCHAR *pDeviceName, IoctlStorage *pIOCTLStorage)
                             do {
                                 res =_stscanf_s(pCurrent, L"%x %d %d%n[^\n]", &pIOCTLStorage->ioctls[dwIOCTLIndex].dwIOCTL, &pIOCTLStorage->ioctls[dwIOCTLIndex].dwLowerSize, &pIOCTLStorage->ioctls[dwIOCTLIndex].dwUpperSize, &charsRead);
                                 pCurrent += charsRead+1;
+                                // TODO: PRINT EACH IOCTL FOR VERBOSITY_ALL
                             }
                             while(res==3 && ++dwIOCTLIndex<MAX_IOCTLS);
                             TPRINT(VERBOSITY_DEFAULT, L"Found and successfully loaded values from %s\n", DIBF_BF_LOG_FILE);

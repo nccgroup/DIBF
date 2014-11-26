@@ -1,14 +1,32 @@
 #include "stdafx.h"
 #include "IoRequest.h"
 
+// TODO: CHECK THAT THESE ERROR CODES ARE ADEQUATE
 // Statics initialization
 const DWORD IoRequest::invalidIoctlErrorCodes[] = {
     ERROR_INVALID_FUNCTION,
     ERROR_NOT_SUPPORTED,
-    ERROR_INVALID_PARAMETER,
-    ERROR_NO_SYSTEM_RESOURCES,
-    NULL
 };
+const DWORD IoRequest::invalidBufSizeErrorCodes[] = {
+    ERROR_INSUFFICIENT_BUFFER,
+    ERROR_BAD_LENGTH,
+    ERROR_INVALID_PARAMETER
+};
+
+// Quick template to find error code in regular static c arrays
+template<size_t SIZE>
+static BOOL IsInCArray(const DWORD (&table)[SIZE], DWORD error)
+{
+    BOOL bResult=FALSE;
+
+    if(std::find(std::begin(table), std::end(table), error) != std::end(table)) {
+        bResult = TRUE;
+    }
+    return bResult;
+}
+
+#define IsValidCode(ERROR) (!IsInCArray<_countof(invalidIoctlErrorCodes)>(invalidIoctlErrorCodes, ERROR))
+#define IsValidSize(ERROR) (!IsInCArray<_countof(invalidBufSizeErrorCodes)>(invalidBufSizeErrorCodes, ERROR))
 
 // Simple constructors
 IoRequest::IoRequest(HANDLE hDev) : hDev(hDev), inBuf(NULL), outBuf(NULL), inSize(0), outSize(0)
@@ -102,31 +120,43 @@ DWORD IoRequest::sendAsync()
     return dwResult;
 }
 
-BOOL IoRequest::isValid(DWORD error)
-{
-    BOOL bResult=TRUE;
-    UINT i=0;
-
-    while(bResult&&invalidIoctlErrorCodes[i]) {
-        if(invalidIoctlErrorCodes[i]==error) {
-            bResult = FALSE;
-        }
-        ++i;
-    }
-    return bResult;
-}
-
 // TODO: CHECK DEEP PROBING FEATURE WORKS AS EXPECTED
 BOOL IoRequest::testSendForValidRequest(BOOL deep)
 {
     BOOL bResult=FALSE;
     DWORD dwSize, lastError;
+    LPTSTR errormessage;
 
     // If deep, attempt inlen 0-256 otherwise just try inlen 32
     // outlen is always 256 (usually there's only an upper bound)
     for(dwSize=deep?0:DEEP_BF_MAX; !bResult&&dwSize<=DEEP_BF_MAX; dwSize+=4) {
+        // TODO: error checking
         allocBuffers(dwSize, DEFAULT_OUTLEN);
-        bResult = sendRequest(FALSE, &lastError) || isValid(lastError);
+        bResult = sendRequest(FALSE, &lastError) || IsValidCode(lastError);
     }
+    // Print return code indicating valid IOCTL code
+    if(bResult) {
+        FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM|FORMAT_MESSAGE_ALLOCATE_BUFFER, 0, lastError, 0, (LPTSTR)&errormessage, 4, NULL);
+        if(errormessage) {
+            TPRINT(VERBOSITY_INFO, L"Found IOCTL: %#.8x failed with error %#.8x - %s", iocode, lastError, errormessage);
+            LocalFree(errormessage);
+        }
+        else {
+            TPRINT(VERBOSITY_INFO, L"Found IOCTL: %#.8x failed with error %#.8x\n", iocode, lastError);
+        }
+    }
+    return bResult;
+}
+
+BOOL IoRequest::testSendForValidBufferSize(DWORD testSize)
+{
+    BOOL bResult=FALSE;
+    DWORD dwSize, lastError;
+    LPTSTR errormessage;
+
+    if(allocBuffers(testSize, DEFAULT_OUTLEN)) {
+        bResult = sendRequest(FALSE, &lastError) || IsValidSize(lastError);
+        FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM|FORMAT_MESSAGE_ALLOCATE_BUFFER, 0, lastError, 0, (LPTSTR)&errormessage, 4, NULL);
+    } // if allocbuffers
     return bResult;
 }

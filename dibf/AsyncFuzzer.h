@@ -36,4 +36,5 @@ private:
     BOOL InitializeThreadsAndCompletionPort();
     ULONG GetNumberOfProcs();
     BOOL CreateThreads();
+    BOOL AllowNewAllocation();
 };
