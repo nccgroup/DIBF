@@ -86,13 +86,12 @@ BOOL Dibf::DoAllBruteForce(PTSTR pDeviceName, DWORD dwIOCTLStart, DWORD dwIOCTLE
 
 BOOL Dibf::start(INT argc, _TCHAR* argv[])
 {
-    INT i;
     TCHAR pDeviceName[MAX_PATH];
     BOOL bDeepBruteForce=FALSE, bIoctls=FALSE, validUsage=TRUE, bIgnoreFile=FALSE, gotDeviceName=FALSE;
     DWORD dwIOCTLStart=START_IOCTL_VALUE, dwIOCTLEnd=END_IOCTL_VALUE, dwFuzzStage=0xf;
     ULONG maxThreads=0, timeLimits[3]={INFINITE, INFINITE,INFINITE}, cancelRate=CANCEL_RATE, maxPending=MAX_PENDING;
 
-    for(i=1; validUsage && i<argc; i++) {
+    for(ULONG i=1; validUsage && i<argc; i++) {
         if(argv[i][0] == L'-') {
             switch(argv[i][1]) {
             case L'd':
@@ -295,7 +294,6 @@ BOOL Dibf::BruteForceIOCTLs(DWORD dwIOCTLStart, DWORD dwIOCTLEnd, BOOL bDeepBrut
 //OUTPUT:
 // None.
 //
-// TODO: REPLACE ALL CALLS TO DeviceIoControl with our wrapper
 BOOL Dibf::BruteForceBufferSizes()
 {
     BOOL bResult=TRUE;
@@ -314,7 +312,7 @@ BOOL Dibf::BruteForceBufferSizes()
         if(dwCurrentSize==MAX_BUFSIZE) {
             TPRINT(VERBOSITY_ALL, L" Failed to find lower edge. Skipping.\n");
             IOCTLStorage.ioctls[i].dwLowerSize = 0;
-            IOCTLStorage.ioctls[i].dwUpperSize = (DWORD)(-1);
+            IOCTLStorage.ioctls[i].dwUpperSize = MAX_BUFSIZE;
         }
         else {
             TPRINT(VERBOSITY_ALL, L" Found lower size edge at %d bytes\n", dwCurrentSize);
@@ -416,7 +414,7 @@ BOOL Dibf::ReadBruteforceResult(TCHAR *pDeviceName, IoctlStorage *pIOCTLStorage)
                             do {
                                 res =_stscanf_s(pCurrent, L"%x %d %d%n[^\n]", &pIOCTLStorage->ioctls[dwIOCTLIndex].dwIOCTL, &pIOCTLStorage->ioctls[dwIOCTLIndex].dwLowerSize, &pIOCTLStorage->ioctls[dwIOCTLIndex].dwUpperSize, &charsRead);
                                 pCurrent += charsRead+1;
-                                // TODO: PRINT EACH IOCTL FOR VERBOSITY_ALL
+                                TPRINT(VERBOSITY_ALL, L"Loaded IOCTL %#.8x [%u, %u]\n", pIOCTLStorage->ioctls[dwIOCTLIndex].dwIOCTL, pIOCTLStorage->ioctls[dwIOCTLIndex].dwLowerSize, pIOCTLStorage->ioctls[dwIOCTLIndex].dwUpperSize);
                             }
                             while(res==3 && ++dwIOCTLIndex<MAX_IOCTLS);
                             TPRINT(VERBOSITY_DEFAULT, L"Found and successfully loaded values from %s\n", DIBF_BF_LOG_FILE);
