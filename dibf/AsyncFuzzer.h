@@ -7,7 +7,7 @@
 // Processors / threads constants
 #define WINDOWS_MAX_PROCS 64
 #define MAX_THREADS 2*WINDOWS_MAX_PROCS
-#define CLEANUP_TIMEOUT 10000 // 10s for threads to do cleanup
+#define ASYNC_CLEANUP_TIMEOUT 10000 // 10s for threads to do cleanup
 // VERBOSITY_DEFAULT Concurency constants
 #define MAX_PENDING 64 // max number of concurrent requests pending
 #define CANCEL_RATE 15 // percentage of pending I/O to issue a cancel for

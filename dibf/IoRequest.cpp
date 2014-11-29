@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "IoRequest.h"
 
-// TODO: CHECK THAT THESE ERROR CODES ARE ADEQUATE
 // Statics initialization
 const DWORD IoRequest::invalidIoctlErrorCodes[] = {
     ERROR_INVALID_FUNCTION,
@@ -69,7 +68,7 @@ BOOL IoRequest::allocBuffers(DWORD inSize, DWORD outSize)
     // If input buffer is requested and size is different
     if(inSize!=this->inSize) {
         // Realloc should (right?) optimize quick return if the requested size is already allocated
-        buf = inBuf ? (UCHAR*)HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, inBuf, inSize) : (UCHAR*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, inSize);
+        buf = inBuf ? (UCHAR*)HeapReAlloc(GetProcessHeap(), 0, inBuf, inSize) : (UCHAR*)HeapAlloc(GetProcessHeap(), 0, inSize);
         if(buf) {
             this->inBuf = buf;
             this->inSize = inSize;
@@ -80,7 +79,7 @@ BOOL IoRequest::allocBuffers(DWORD inSize, DWORD outSize)
     }
     if(outSize!=this->outSize && bResult) {
         // Realloc should (right?) optimize quick return if the requested size is already allocated
-        buf = outBuf ? (UCHAR*)HeapReAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, outBuf, outSize) : (UCHAR*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, outSize);
+        buf = outBuf ? (UCHAR*)HeapReAlloc(GetProcessHeap(), 0, outBuf, outSize) : (UCHAR*)HeapAlloc(GetProcessHeap(), 0, outSize);
         if(buf) {
             this->outBuf = buf;
             this->outSize = outSize;
@@ -104,6 +103,16 @@ BOOL IoRequest::sendRequest(BOOL async, PDWORD lastError)
     return bResult;
 }
 
+BOOL IoRequest::sendSync()
+{
+    BOOL bResult=FALSE;
+    DWORD error;
+
+    if(sendRequest(FALSE, &error)) {
+        bResult=TRUE;
+    }
+    return bResult;
+}
 
 DWORD IoRequest::sendAsync()
 {
@@ -124,15 +133,16 @@ DWORD IoRequest::sendAsync()
 BOOL IoRequest::testSendForValidRequest(BOOL deep)
 {
     BOOL bResult=FALSE;
-    DWORD dwSize, lastError;
+    DWORD dwSize, lastError=0;
     LPTSTR errormessage;
 
     // If deep, attempt inlen 0-256 otherwise just try inlen 32
     // outlen is always 256 (usually there's only an upper bound)
     for(dwSize=deep?0:DEEP_BF_MAX; !bResult&&dwSize<=DEEP_BF_MAX; dwSize+=4) {
-        // TODO: error checking
-        allocBuffers(dwSize, DEFAULT_OUTLEN);
-        bResult = sendRequest(FALSE, &lastError) || IsValidCode(lastError);
+        bResult = allocBuffers(dwSize, DEFAULT_OUTLEN);
+        if(bResult) {
+            bResult = sendRequest(FALSE, &lastError) || IsValidCode(lastError);
+        }
     }
     // Print return code indicating valid IOCTL code
     if(bResult) {
@@ -151,7 +161,7 @@ BOOL IoRequest::testSendForValidRequest(BOOL deep)
 BOOL IoRequest::testSendForValidBufferSize(DWORD testSize)
 {
     BOOL bResult=FALSE;
-    DWORD dwSize, lastError;
+    DWORD lastError;
     LPTSTR errormessage;
 
     if(allocBuffers(testSize, DEFAULT_OUTLEN)) {

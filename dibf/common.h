@@ -33,8 +33,8 @@
 #define MAX_IOCTLS 512
 #define DIBF_BF_LOG_FILE L"dibf-bf-results.txt"
 // Fuzzing stages
-#define RANDOM_FUZZER 1
-#define DWORD_FUZZER 2
+#define DWORD_FUZZER 1
+#define RANDOM_FUZZER 2
 #define PEACH_FUZZER 4
 // Async I/O statuses
 #define DIBF_SUCCESS 1

@@ -8,33 +8,14 @@ Fuzzer::Tracker Fuzzer::tracker;
 Fuzzer::Fuzzer(FuzzingProvider *p) : fuzzingProvider(p)
 {
     TPRINT(VERBOSITY_DEBUG, L"Fuzzer constructor\n");
-    state=STATE_FUZZING;
+    tracker.currentFuzzer = this;
+    this->state=STATE_FUZZING;
 }
 
 // Simple destructor
 Fuzzer::~Fuzzer() {
     TPRINT(VERBOSITY_DEBUG, L"Fuzzer destructor\n");
     delete fuzzingProvider;
-}
-
-BOOL Fuzzer::Tracker::SetTerminationEvent()
-{
-    return SetEvent(hEvent);
-}
-
-BOOL Fuzzer::Tracker::ResetTerminationEvent()
-{
-    return ResetEvent(hEvent);
-}
-
-BOOL Fuzzer::Tracker::WaitOnTerminationEvent(ULONG seconds)
-{
-    BOOL bResult=FALSE;
-
-    if(WAIT_FAILED!=WaitForSingleObject(hEvent, seconds*1000)) {
-        bResult = TRUE;
-    }
-    return bResult;
 }
 
 //DESCRIPTION:
@@ -50,13 +31,21 @@ BOOL Fuzzer::Tracker::WaitOnTerminationEvent(ULONG seconds)
 //
 BOOL __stdcall Fuzzer::CtrlHandler(DWORD fdwCtrlType)
 {
-    if(fdwCtrlType==CTRL_C_EVENT || fdwCtrlType==CTRL_BREAK_EVENT)
-    {
-        // This triggers the end of fuzzing stage
-        tracker.SetTerminationEvent();
-        return TRUE;
+    BOOL bResult=FALSE;
+    if(fdwCtrlType==CTRL_C_EVENT || fdwCtrlType==CTRL_BREAK_EVENT) {
+        bResult = SetEvent(tracker.hEvent); // This triggers the end of async fuzzing stage
     }
-    return FALSE;
+    return bResult;
+}
+
+BOOL Fuzzer::WaitOnTerminationEvent(ULONG seconds)
+{
+    BOOL bResult=FALSE;
+
+    if(WAIT_FAILED!=WaitForSingleObject(tracker.hEvent, seconds*1000)) {
+        bResult = TRUE;
+    }
+    return bResult;
 }
 
 //DESCRIPTION:
@@ -70,8 +59,8 @@ BOOL __stdcall Fuzzer::CtrlHandler(DWORD fdwCtrlType)
 //
 Fuzzer::Tracker::Tracker()
 {
-    // Create the MANUAL-RESET bail event
-    hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+    // Create the auto reset bail event (only the main thread ever waits on it)
+    hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
     if(hEvent) {
         // Register ctrl-c handler
         if(!SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, TRUE)) {
@@ -154,3 +143,5 @@ VOID Fuzzer::Tracker::Stats::print()
     TPRINT(VERBOSITY_DEFAULT, L"---------------------------------------\n\n");
     return;
 }
+
+

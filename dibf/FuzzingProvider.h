@@ -16,8 +16,20 @@ class Dumbfuzzer : public FuzzingProvider
 {
 public:
     Dumbfuzzer(IoctlStorage*);
-    virtual ~Dumbfuzzer();
+    ~Dumbfuzzer();
     BOOL fuzzRequest(IoRequest*, std::mt19937*);
 private:
     IoctlStorage* ioStore;
+};
+
+class SlidingDwordFuzzer : public FuzzingProvider
+{
+public:
+    SlidingDwordFuzzer(IoctlStorage*);
+    ~SlidingDwordFuzzer();
+    BOOL fuzzRequest(IoRequest*, std::mt19937*);
+private:
+    IoctlStorage* ioStore;
+    static CONST DWORD DWORDArray[];
+    volatile UINT ioctlIndex, iteration, position;
 };

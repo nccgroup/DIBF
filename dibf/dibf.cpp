@@ -4,11 +4,13 @@
 * TODO:                                                                            *
 * - Alter code to be resilient against IOCTLs that locks                           *
 * - Add functionality to guess valid output size                                   *
+* - Check that error codes for guessing are adequate                               *
 ************************************************************************************/
 
 #include "stdafx.h"
 #include "dibf.h"
 #include "AsyncFuzzer.h"
+#include "SyncFuzzer.h"
 
 Dibf::Dibf() : hDevice(INVALID_HANDLE_VALUE)
 {
@@ -86,12 +88,13 @@ BOOL Dibf::DoAllBruteForce(PTSTR pDeviceName, DWORD dwIOCTLStart, DWORD dwIOCTLE
 
 BOOL Dibf::start(INT argc, _TCHAR* argv[])
 {
-    TCHAR pDeviceName[MAX_PATH];
+    TCHAR pDeviceName[MAX_PATH] = {0};
     BOOL bDeepBruteForce=FALSE, bIoctls=FALSE, validUsage=TRUE, bIgnoreFile=FALSE, gotDeviceName=FALSE;
     DWORD dwIOCTLStart=START_IOCTL_VALUE, dwIOCTLEnd=END_IOCTL_VALUE, dwFuzzStage=0xf;
     ULONG maxThreads=0, timeLimits[3]={INFINITE, INFINITE,INFINITE}, cancelRate=CANCEL_RATE, maxPending=MAX_PENDING;
 
-    for(ULONG i=1; validUsage && i<argc; i++) {
+    // Process options
+    for(ULONG i=1; validUsage && i<argc-1; i++) {
         if(argv[i][0] == L'-') {
             switch(argv[i][1]) {
             case L'd':
@@ -194,16 +197,9 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
                 break;
             }
         }
-        else {
-            // This is the last parameter
-            if(i==argc-1) {
-                // TODO: FIX CASE WHERE NO DEVICE NAME IS GIVEN (JUST ERROR CHECKING ON COPY BELOW?)
-                _tcsncpy_s(pDeviceName, MAX_PATH, argv[i], _TRUNCATE);
-                gotDeviceName = TRUE;
-            }
-            else {
-                validUsage = FALSE;
-            }
+        // If there is one last parameter, it's the device name
+        if(++i==argc-1) {
+            gotDeviceName = 0!=_tcsncpy_s(pDeviceName, MAX_PATH, argv[i], _TRUNCATE);
         }
     }
     if(validUsage) {
@@ -215,10 +211,15 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
         }
         // If we don't have thee ioctls defs from file
         if(!bIoctls) {
-            // Open the device based on the file name passed from params, fuzz the IOCTLs and return the device handle
-            bIoctls = DoAllBruteForce(pDeviceName, dwIOCTLStart, dwIOCTLEnd, bDeepBruteForce);
-            if(!bIoctls) {
-                TPRINT(VERBOSITY_ERROR, L"Failed to guess IOCTLs, exiting\n");
+            if(gotDeviceName) {
+                // Open the device based on the file name passed from params, fuzz the IOCTLs and return the device handle
+                bIoctls = DoAllBruteForce(pDeviceName, dwIOCTLStart, dwIOCTLEnd, bDeepBruteForce);
+                if(!bIoctls) {
+                    TPRINT(VERBOSITY_ERROR, L"Failed to guess IOCTLs, exiting\n");
+                }
+            }
+            else {
+                TPRINT(VERBOSITY_ERROR, L"No device name provided, exiting\n");
             }
         }
         // At this point we need ioctl defs
@@ -297,7 +298,7 @@ BOOL Dibf::BruteForceIOCTLs(DWORD dwIOCTLStart, DWORD dwIOCTLEnd, BOOL bDeepBrut
 BOOL Dibf::BruteForceBufferSizes()
 {
     BOOL bResult=TRUE;
-    DWORD dwCurrentSize, dwBytesReturned;
+    DWORD dwCurrentSize;
     IoRequest ioRequest(hDevice);  // This unique request gets reused iteratively
 
     for(ULONG i=0; i<IOCTLStorage.count; i++) {
@@ -394,6 +395,7 @@ BOOL Dibf::ReadBruteforceResult(TCHAR *pDeviceName, IoctlStorage *pIOCTLStorage)
     BOOL bResult=FALSE, resint;
     INT charsRead=0, res;
 
+    // TODO: check device name against the one eventually passed from command line
     hFile = CreateFile(DIBF_BF_LOG_FILE, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if(hFile!=INVALID_HANDLE_VALUE) {
         dwFileSize = GetFileSize(hFile, NULL);
@@ -479,6 +481,20 @@ BOOL Dibf::ReadBruteforceResult(TCHAR *pDeviceName, IoctlStorage *pIOCTLStorage)
 //
 VOID Dibf::FuzzIOCTLs(HANDLE hDevice, IoctlStorage *pIOCTLStorage, DWORD dwFuzzStage, ULONG maxThreads, PULONG timeLimits, ULONG maxPending, ULONG cancelRate)
 {
+    // If enabled by command line, run sliding DWORD fuzzer
+    if(timeLimits[1]&&(dwFuzzStage & DWORD_FUZZER) == DWORD_FUZZER) {
+        TPRINT(VERBOSITY_DEFAULT, L"<<<< RUNNING SLIDING DWORD FUZZER >>>>\n");
+        Fuzzer::printDateTime(FALSE);
+        SyncFuzzer *syncf = new SyncFuzzer(hDevice, new SlidingDwordFuzzer(pIOCTLStorage));
+        if(syncf->init()) {
+            syncf->start();
+        }
+        else {
+            TPRINT(VERBOSITY_ERROR, L"SlidingDWORD fuzzer init failed. aborting run.\n");
+        }
+        Fuzzer::tracker.stats.print();
+        delete syncf;
+    }
     // If enabled by command line, run pure random fuzzer
     if(timeLimits[0]&&(dwFuzzStage & RANDOM_FUZZER)==RANDOM_FUZZER) {
         TPRINT(VERBOSITY_DEFAULT, L"<<<< RUNNING RANDOM FUZZER >>>>\n");
@@ -488,22 +504,16 @@ VOID Dibf::FuzzIOCTLs(HANDLE hDevice, IoctlStorage *pIOCTLStorage, DWORD dwFuzzS
             asyncf->start();
         }
         else {
-            TPRINT(VERBOSITY_ERROR, L"Async fuzzer init failed. aborting run.\n");
+            TPRINT(VERBOSITY_ERROR, L"Dumbfuzzer init failed. aborting run.\n");
         }
         Fuzzer::tracker.stats.print();
         delete asyncf;
-    }
-    // If enabled by command line, run sliding DWORD fuzzer
-    if(timeLimits[1]&&(dwFuzzStage & DWORD_FUZZER) == DWORD_FUZZER) {
-        TPRINT(VERBOSITY_DEFAULT, L"<<<< RUNNING SLIDING DWORD FUZZER >>>>\n");
-        // printDateTime(FALSE);
-        // StartSyncFuzzer(SlidingDWORDFuzzer, hDevice, pIOCTLStorage, dwIOCTLCount, timeLimits[1], &stats);
-        Fuzzer::tracker.stats.print();
     }
     // If enabled by command line, run async fuzzer
     if(timeLimits[2]&&(dwFuzzStage & PEACH_FUZZER) == PEACH_FUZZER) {
         TPRINT(VERBOSITY_DEFAULT, L"<<<< RUNNING PEACH FUZZER >>>>\n");
         Fuzzer::printDateTime(FALSE);
+        TPRINT(VERBOSITY_DEFAULT, L"NOT IMPLMENTED\n");
         Fuzzer::tracker.stats.print();
     } // if async fuzzer
     return;
@@ -542,9 +552,9 @@ VOID Dibf::usage(VOID)
     TPRINT(VERBOSITY_DEFAULT, L"          fuzzer stages. If left out, it VERBOSITY_DEFAULTs to all\n");
     TPRINT(VERBOSITY_DEFAULT, L"          stages.\n");
     TPRINT(VERBOSITY_DEFAULT, L"          0 = Brute-force IOCTLs only\n");
-    TPRINT(VERBOSITY_DEFAULT, L"          1 = Random\n");
-    TPRINT(VERBOSITY_DEFAULT, L"          2 = Sliding DWORD\n");
-    TPRINT(VERBOSITY_DEFAULT, L"          4 = Peach\n");
+    TPRINT(VERBOSITY_DEFAULT, L"          1 = Sliding DWORD (sync)\n");
+    TPRINT(VERBOSITY_DEFAULT, L"          2 = Random (async)\n");
+    TPRINT(VERBOSITY_DEFAULT, L"          4 = Peach (async)\n");
     TPRINT(VERBOSITY_DEFAULT, L"Examples:\n");
     TPRINT(VERBOSITY_DEFAULT, L" dibf \\\\.\\MyDevice\n");
     TPRINT(VERBOSITY_DEFAULT, L" dibf -v -d -s 0x10000000 \\\\.\\MyDevice\n");

@@ -9,6 +9,8 @@
 #define STATE_CLEANUP 1
 #define STATE_DONE 0
 
+#define UNLFOLD_LOW_WORD(DWORD) ((DWORD<<16)|(DWORD&0xffff))
+
 class Fuzzer
 {
 public:
@@ -21,9 +23,8 @@ public:
     public:
         Tracker();
         ~Tracker();
-        BOOL SetTerminationEvent();
-        BOOL ResetTerminationEvent();
-        BOOL WaitOnTerminationEvent(ULONG);
+        Fuzzer *currentFuzzer;
+        HANDLE hEvent; // The event signaled by ctrl-c
         class Stats {
         public:
             VOID print();
@@ -37,8 +38,6 @@ public:
             volatile long PendingRequests;
             volatile long AllocatedRequests;
         } stats;
-    private:
-        HANDLE hEvent; // The event signaled by ctrl-c
     } tracker;
 protected:
     // Vars
@@ -46,8 +45,9 @@ protected:
     IoctlStorage *ioctls;
     ULONG timeLimit;
     FuzzingProvider *fuzzingProvider;
+    volatile DWORD state; // Current state
     // Functions
     BOOL InitializeFuzzersTermination();
-    volatile DWORD state;
+    BOOL WaitOnTerminationEvent(ULONG);
     static BOOL __stdcall CtrlHandler(DWORD);
 };

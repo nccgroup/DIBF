@@ -19,6 +19,7 @@ public:
     BOOL testSendForValidRequest(BOOL);
     BOOL testSendForValidBufferSize(DWORD);
     VOID reset();
+    BOOL sendSync();
     DWORD sendAsync();
     BOOL allocBuffers(DWORD, DWORD);
     UCHAR *getInbuf();

@@ -1,8 +1,6 @@
 #include "stdafx.h"
 #include "AsyncFuzzer.h"
 
-#define UNLFOLD_LOW_WORD(DWORD) ((DWORD<<16)|(DWORD&0xffff))
-
 AsyncFuzzer::AsyncFuzzer(HANDLE hDevice, ULONG timeLimit, ULONG maxPending, ULONG cancelRate, FuzzingProvider *provider) : Fuzzer(provider)
 {
     TPRINT(VERBOSITY_DEBUG, L"AsyncFuzzer constructor\n");
@@ -35,31 +33,24 @@ BOOL AsyncFuzzer::init(ULONG nbThreads)
     BOOL bResult=FALSE;
     UINT nbThreadsValid=0;
 
-    // Reset termination event
-    bResult = tracker.ResetTerminationEvent();
-    if(bResult) {
-        // Get a valid nb of threads: MAX_THREADS if too big, twice the nb of procs if too small
-        if(nbThreads>MAX_THREADS) {
-            nbThreadsValid = MAX_THREADS;
-            TPRINT(VERBOSITY_INFO, L"Nb of threads too big, using %d\n", MAX_THREADS);
-        }
-        else {
-            nbThreadsValid = nbThreads ? nbThreads : GetNumberOfProcs()*2;
-        }
-        threads = (PHANDLE)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(HANDLE)*nbThreadsValid);
-        if(threads) {
-            startingNbThreads = nbThreadsValid;
-            if(InitializeThreadsAndCompletionPort()) {
-                TPRINT(VERBOSITY_INFO, L"%u threads and IOCP created successfully\n", startingNbThreads);
-                bResult = TRUE;
-            }
-            else {
-                TPRINT(VERBOSITY_ERROR, L"Failed to create Threads and IOCP\n");
-            }
-        }
+    // Get a valid nb of threads: MAX_THREADS if too big, twice the nb of procs if too small
+    if(nbThreads>MAX_THREADS) {
+        nbThreadsValid = MAX_THREADS;
+        TPRINT(VERBOSITY_INFO, L"Nb of threads too big, using %d\n", MAX_THREADS);
     }
     else {
-        TPRINT(VERBOSITY_ERROR, L"Failed to reset termination event\n");
+        nbThreadsValid = nbThreads ? nbThreads : GetNumberOfProcs()*2;
+    }
+    threads = (PHANDLE)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(HANDLE)*nbThreadsValid);
+    if(threads) {
+        startingNbThreads = nbThreadsValid;
+        if(InitializeThreadsAndCompletionPort()) {
+            TPRINT(VERBOSITY_INFO, L"%u threads and IOCP created successfully\n", startingNbThreads);
+            bResult = TRUE;
+        }
+        else {
+            TPRINT(VERBOSITY_ERROR, L"Failed to create Threads and IOCP\n");
+        }
     }
     return bResult;
 }
@@ -136,7 +127,6 @@ BOOL _inline AsyncFuzzer::AllowNewAllocation()
     }
     return allow;
 }
-
 
 //DESCRIPTION:
 // This function is the thread proc for the async fuzzer. It dequeues requests from the io completion port,
@@ -331,6 +321,7 @@ BOOL AsyncFuzzer::start()
     BOOL bResult = FALSE;
     DWORD waitResult;
 
+    // TODO: move this to init
     bResult = SetFileCompletionNotificationModes(hDev, FILE_SKIP_COMPLETION_PORT_ON_SUCCESS);
     if(!bResult) {
         TPRINT(VERBOSITY_ERROR, L"Failed to configure iocompletion port with error %#.8x\n", GetLastError());
@@ -342,18 +333,18 @@ BOOL AsyncFuzzer::start()
         TPRINT(VERBOSITY_ERROR, L"Failed to post completion status to completion port\n");
     }
     // Wait for ctrl-c or timout
-    bResult = tracker.WaitOnTerminationEvent(timeLimit);
+    bResult = WaitOnTerminationEvent(timeLimit);
     if(bResult) {
-        state=STATE_CLEANUP;
-            waitResult = WaitForMultipleObjects(startingNbThreads, threads, TRUE, INFINITE);
-            if(waitResult==WAIT_OBJECT_0) {
-                TPRINT(VERBOSITY_INFO, L"All fuzzer threads exited timely\n");
-                bResult = TRUE;
-            }
-            else {
-                TPRINT(VERBOSITY_ERROR, L"Not all worker threads exited timely\n");
-            }
+        state = STATE_CLEANUP;
+        waitResult = WaitForMultipleObjects(startingNbThreads, threads, TRUE, ASYNC_CLEANUP_TIMEOUT);
+        if(waitResult==WAIT_OBJECT_0) {
+            TPRINT(VERBOSITY_INFO, L"All fuzzer threads exited timely\n");
+            bResult = TRUE;
         }
+        else {
+            TPRINT(VERBOSITY_ERROR, L"Not all worker threads exited timely\n");
+        }
+    }
     else {
         TPRINT(VERBOSITY_ERROR, L"Failed wait on termination event\n");
     }
