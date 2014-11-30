@@ -105,9 +105,23 @@ BOOL AsyncFuzzer::InitializeThreadsAndCompletionPort()
 
     hIocp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, (ULONG_PTR)NULL, 0);
     if(hIocp) {
-        bResult = CreateThreads();
-        if(!bResult){
-            TPRINT(VERBOSITY_ERROR, L"Failed to create worker threads\n", );
+        // Associate the device handle to iocp
+        bResult = NULL!=CreateIoCompletionPort(hDev, hIocp, 0, 0);
+        if(bResult) {
+            // Configure io completion port
+            bResult = SetFileCompletionNotificationModes(hDev, FILE_SKIP_COMPLETION_PORT_ON_SUCCESS);
+            if(bResult) {
+                bResult = CreateThreads();
+                if(!bResult){
+                    TPRINT(VERBOSITY_ERROR, L"Failed to create worker threads\n");
+                }
+            }
+            else {
+                TPRINT(VERBOSITY_ERROR, L"Failed to configure iocompletion port with error %#.8x\n", GetLastError());
+            }
+        }
+        else {
+            TPRINT(VERBOSITY_ERROR, L"Failed to associate device with iocompletion port with error %#.8x\n", GetLastError());
         }
     }
     else {
@@ -143,7 +157,7 @@ BOOL _inline AsyncFuzzer::AllowNewAllocation()
 //// TODO: SPLIT IN SUB FUNCTIONS
 DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
 {
-    INT status;
+    UINT status;
     BOOL bResult, canceled;
     DWORD nbOfBytes, error;
     ULONG_PTR specialPacket;
@@ -152,8 +166,8 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
 
     // Get asyncfuzzer
     AsyncFuzzer *asyncfuzzer = (AsyncFuzzer*)param;
-    // Initialize thread's PRNG (TODO: get rid of warning)
-    std::mt19937 prng = std::mt19937(UNLFOLD_LOW_WORD(GetCurrentThreadId())^GetTickCount());
+    // Initialize thread's PRNG
+    std::mt19937 prng(UNLFOLD_LOW_WORD(GetCurrentThreadId())^GetTickCount());
     do {
         // Dequeue I/O packet
         bResult = GetQueuedCompletionStatus(asyncfuzzer->hIocp, &nbOfBytes, &specialPacket, &pOvrlp, INFINITE);
@@ -321,13 +335,6 @@ BOOL AsyncFuzzer::start()
     BOOL bResult = FALSE;
     DWORD waitResult;
 
-    // TODO: move this to init
-    bResult = SetFileCompletionNotificationModes(hDev, FILE_SKIP_COMPLETION_PORT_ON_SUCCESS);
-    if(!bResult) {
-        TPRINT(VERBOSITY_ERROR, L"Failed to configure iocompletion port with error %#.8x\n", GetLastError());
-    }
-    // Associate this dev handle to iocp
-    CreateIoCompletionPort(hDev, hIocp, 0, 0);
     // Pass control to the iocp handler
     if(!PostQueuedCompletionStatus(hIocp, 0, SPECIAL_PACKET, SPECIAL_OVERLAPPED_START)) {
         TPRINT(VERBOSITY_ERROR, L"Failed to post completion status to completion port\n");

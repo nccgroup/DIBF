@@ -94,7 +94,7 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
     ULONG maxThreads=0, timeLimits[3]={INFINITE, INFINITE,INFINITE}, cancelRate=CANCEL_RATE, maxPending=MAX_PENDING;
 
     // Process options
-    for(ULONG i=1; validUsage && i<argc-1; i++) {
+    for(LONG i=1; validUsage && i<argc-1; i++) {
         if(argv[i][0] == L'-') {
             switch(argv[i][1]) {
             case L'd':

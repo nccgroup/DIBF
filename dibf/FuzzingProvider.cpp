@@ -33,7 +33,8 @@ Dumbfuzzer::~Dumbfuzzer()
 BOOL Dumbfuzzer::fuzzRequest(IoRequest *request, std::mt19937 *threadRandomProvider)
 {
     BOOL bResult=FALSE;
-    INT i, r;
+    INT i;
+    UINT r;
     DWORD size, ioctlIndex;
     PUCHAR fuzzBuf;
 
@@ -53,7 +54,7 @@ BOOL Dumbfuzzer::fuzzRequest(IoRequest *request, std::mt19937 *threadRandomProvi
         }
         // Last DWORD
         r = (*threadRandomProvider)();
-        for(UINT j=0; i<size; i++,j+=8) {
+        for(INT j=0; i<(INT)size; i++,j+=8) {
             fuzzBuf[i] = (UCHAR)((r>>j)&0xff);
         }
     }
@@ -75,9 +76,10 @@ SlidingDwordFuzzer::~SlidingDwordFuzzer()
 BOOL SlidingDwordFuzzer::fuzzRequest(IoRequest *request, std::mt19937 *threadRandomProvider)
 {
     BOOL bResult=FALSE, retry=TRUE;
-    UINT r;
-    DWORD size, dwSlideIterations;
+    DWORD size;
     PUCHAR fuzzBuf, pCurrentPosition;
+
+    UNREFERENCED_PARAMETER(threadRandomProvider);
 
     while(retry) {
         // Check for ioctls exhaustion

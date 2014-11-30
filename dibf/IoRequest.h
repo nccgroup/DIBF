@@ -3,8 +3,8 @@
 #include "common.h"
 
 #define MAX_IOCTLS 512
-#define DEEP_BF_MAX 32
-#define DEFAULT_OUTLEN 256
+#define DEEP_BF_MAX ((DWORD)32)
+#define DEFAULT_OUTLEN ((DWORD)256)
 
 class IoRequest
 {

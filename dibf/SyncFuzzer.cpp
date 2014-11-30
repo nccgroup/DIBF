@@ -22,14 +22,13 @@ BOOL SyncFuzzer::init()
 
 DWORD SyncFuzzer::FuzzProc(PVOID param)
 {
-    DWORD dwResult=ERROR_SUCCESS;
     SyncFuzzer *syncFuzzer = (SyncFuzzer*)param;
     BOOL bResult;
     ULONG nbConsecutiveFailures=0;
     IoRequest request(syncFuzzer->hDev);
 
-    // Initialize thread's PRNG (TODO: get rid of warning)
-    std::mt19937 prng = std::mt19937(UNLFOLD_LOW_WORD(GetCurrentThreadId())^GetTickCount());
+    // Initialize thread's PRNG
+    std::mt19937 prng(UNLFOLD_LOW_WORD(GetCurrentThreadId())^GetTickCount());
     while(syncFuzzer->state==STATE_FUZZING) {
         if(nbConsecutiveFailures<MAX_CONSECUTIVE_FAILURES) {
             if(syncFuzzer->fuzzingProvider->fuzzRequest(&request, &prng)) {
@@ -57,7 +56,7 @@ DWORD SyncFuzzer::FuzzProc(PVOID param)
             break;
         }
     }
-    return 0;
+    return ERROR_SUCCESS;
 }
 
 BOOL SyncFuzzer::start()

@@ -27,7 +27,6 @@
 // Ioctl guessing vars
 #define START_IOCTL_VALUE 0x00100000
 #define END_IOCTL_VALUE 0xffffffff
-#define DEEP_BF_MAX 32
 #define MAX_BUFSIZE 8192 // 8k
 // Ioctl info storage
 #define MAX_IOCTLS 512
@@ -37,9 +36,9 @@
 #define RANDOM_FUZZER 2
 #define PEACH_FUZZER 4
 // Async I/O statuses
-#define DIBF_SUCCESS 1
-#define DIBF_PENDING 0
-#define DIBF_ERROR -1
+#define DIBF_SUCCESS ((DWORD)1)
+#define DIBF_PENDING ((DWORD)0)
+#define DIBF_ERROR ((DWORD)-1)
 
 class IoctlStorage
 {

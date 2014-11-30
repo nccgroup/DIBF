@@ -15,5 +15,5 @@ public:
     BOOL init();
     BOOL start();
 private:
-    static DWORD FuzzProc(PVOID);
+    static DWORD WINAPI FuzzProc(PVOID);
 };
