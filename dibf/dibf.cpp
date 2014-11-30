@@ -92,9 +92,10 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
     BOOL bDeepBruteForce=FALSE, bIoctls=FALSE, validUsage=TRUE, bIgnoreFile=FALSE, gotDeviceName=FALSE;
     DWORD dwIOCTLStart=START_IOCTL_VALUE, dwIOCTLEnd=END_IOCTL_VALUE, dwFuzzStage=0xf;
     ULONG maxThreads=0, timeLimits[3]={INFINITE, INFINITE,INFINITE}, cancelRate=CANCEL_RATE, maxPending=MAX_PENDING;
+    LONG i=1;
 
     // Process options
-    for(LONG i=1; validUsage && i<argc-1; i++) {
+    for(i=1; validUsage && i<argc; i++) {
         if(argv[i][0] == L'-') {
             switch(argv[i][1]) {
             case L'd':
@@ -196,18 +197,24 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
                 validUsage = FALSE;
                 break;
             }
+        } // if
+        else {
+            // If this is the last parameter, it has to be the device name
+            if(i==argc-1) {
+                gotDeviceName = 0==_tcsncpy_s(pDeviceName, MAX_PATH, argv[i], _TRUNCATE);
+            }
+            else {
+                validUsage = FALSE;
+            }
         }
-        // If there is one last parameter, it's the device name
-        if(++i==argc-1) {
-            gotDeviceName = 0!=_tcsncpy_s(pDeviceName, MAX_PATH, argv[i], _TRUNCATE);
-        }
-    }
+    } // for
     if(validUsage) {
         // Unless -i
         if(!bIgnoreFile) {
             // Attempt to read file
             TPRINT(VERBOSITY_DEFAULT, L"<<<< CAPTURING IOCTL DEFINITIONS FROM FILE >>>>\n");
-            bIoctls = ReadBruteforceResult(pDeviceName, &IOCTLStorage);
+            // TODO: only check device name from command line IF ANY
+            bIoctls = ReadBruteforceResult(pDeviceName, &gotDeviceName, &IOCTLStorage);
         }
         // If we don't have thee ioctls defs from file
         if(!bIoctls) {
@@ -219,7 +226,7 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
                 }
             }
             else {
-                TPRINT(VERBOSITY_ERROR, L"No device name provided, exiting\n");
+                TPRINT(VERBOSITY_ERROR, L"No valid device name provided, exiting\n");
             }
         }
         // At this point we need ioctl defs
@@ -387,15 +394,16 @@ BOOL Dibf::WriteBruteforceResult(TCHAR *pDeviceName, IoctlStorage *pIOCTLStorage
 // Populates pDeviceName, pIOCTLStorage and dwIOCTLCount. Returns a bool indicating
 // if the read was successful or not.
 //
-BOOL Dibf::ReadBruteforceResult(TCHAR *pDeviceName, IoctlStorage *pIOCTLStorage)
+BOOL Dibf::ReadBruteforceResult(TCHAR *clDeviceName, BOOL *pGotDeviceName, IoctlStorage *pIOCTLStorage)
 {
     HANDLE hFile=INVALID_HANDLE_VALUE;
     DWORD error, dwFileSize, dwBytesRead, dwIOCTLIndex = 0;
     TCHAR *pBuffer=NULL, *pCurrent;
     BOOL bResult=FALSE, resint;
     INT charsRead=0, res;
+    TCHAR deviceName[MAX_PATH];
+    BOOL gotDeviceName=*pGotDeviceName;
 
-    // TODO: check device name against the one eventually passed from command line
     hFile = CreateFile(DIBF_BF_LOG_FILE, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if(hFile!=INVALID_HANDLE_VALUE) {
         dwFileSize = GetFileSize(hFile, NULL);
@@ -409,22 +417,28 @@ BOOL Dibf::ReadBruteforceResult(TCHAR *pDeviceName, IoctlStorage *pIOCTLStorage)
                         pBuffer[dwFileSize/sizeof(TCHAR)] = L'\0';
                         // First, read the device name
                         pCurrent = pBuffer;
-                        res = _stscanf_s(pCurrent, L"%[^\n]%n", pDeviceName, MAX_PATH, &charsRead);
+                        res = _stscanf_s(pCurrent, L"%[^\n]%n", gotDeviceName?deviceName:clDeviceName, MAX_PATH, &charsRead);
                         pCurrent += charsRead+1; // Read past the string and the terminating \n
                         if(res==1) {
-                            //now, read up all the IOCTLs and their size edges
-                            do {
-                                res =_stscanf_s(pCurrent, L"%x %d %d%n[^\n]", &pIOCTLStorage->ioctls[dwIOCTLIndex].dwIOCTL, &pIOCTLStorage->ioctls[dwIOCTLIndex].dwLowerSize, &pIOCTLStorage->ioctls[dwIOCTLIndex].dwUpperSize, &charsRead);
-                                pCurrent += charsRead+1;
-                                TPRINT(VERBOSITY_ALL, L"Loaded IOCTL %#.8x [%u, %u]\n", pIOCTLStorage->ioctls[dwIOCTLIndex].dwIOCTL, pIOCTLStorage->ioctls[dwIOCTLIndex].dwLowerSize, pIOCTLStorage->ioctls[dwIOCTLIndex].dwUpperSize);
+                            if(gotDeviceName && _tcscmp(deviceName, clDeviceName)) {
+                                TPRINT(VERBOSITY_ERROR, L"Device name from command line (%s) and from existing %s file (%s) differ, aborting\n", clDeviceName, DIBF_BF_LOG_FILE, deviceName);
+                                *pGotDeviceName=FALSE;
                             }
-                            while(res==3 && ++dwIOCTLIndex<MAX_IOCTLS);
-                            TPRINT(VERBOSITY_DEFAULT, L"Found and successfully loaded values from %s\n", DIBF_BF_LOG_FILE);
-                            TPRINT(VERBOSITY_INFO, L" Device name: %s\n", pDeviceName);
-                            TPRINT(VERBOSITY_INFO, L" Number of IOCTLs: %d\n", dwIOCTLIndex);
-                            // Write back the number of IOCTLs
-                            pIOCTLStorage->count = dwIOCTLIndex;
-                            bResult = TRUE;
+                            else {
+                                //now, read up all the IOCTLs and their size edges
+                                do {
+                                    res =_stscanf_s(pCurrent, L"%x %d %d%n[^\n]", &pIOCTLStorage->ioctls[dwIOCTLIndex].dwIOCTL, &pIOCTLStorage->ioctls[dwIOCTLIndex].dwLowerSize, &pIOCTLStorage->ioctls[dwIOCTLIndex].dwUpperSize, &charsRead);
+                                    pCurrent += charsRead+1;
+                                    TPRINT(VERBOSITY_ALL, L"Loaded IOCTL %#.8x [%u, %u]\n", pIOCTLStorage->ioctls[dwIOCTLIndex].dwIOCTL, pIOCTLStorage->ioctls[dwIOCTLIndex].dwLowerSize, pIOCTLStorage->ioctls[dwIOCTLIndex].dwUpperSize);
+                                }
+                                while(res==3 && ++dwIOCTLIndex<MAX_IOCTLS);
+                                TPRINT(VERBOSITY_DEFAULT, L"Found and successfully loaded values from %s\n", DIBF_BF_LOG_FILE);
+                                TPRINT(VERBOSITY_INFO, L" Device name: %s\n", deviceName);
+                                TPRINT(VERBOSITY_INFO, L" Number of IOCTLs: %d\n", dwIOCTLIndex);
+                                // Write back the number of IOCTLs
+                                pIOCTLStorage->count = dwIOCTLIndex;
+                                bResult = TRUE;
+                            }
                         }
                         else{
                             TPRINT(VERBOSITY_ERROR, L"Reading device name from log file %s failed.\n", DIBF_BF_LOG_FILE);

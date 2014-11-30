@@ -19,7 +19,7 @@ private:
     BOOL DoAllBruteForce(PTSTR, DWORD, DWORD, BOOL);
     BOOL BruteForceIOCTLs(DWORD, DWORD, BOOL);
     BOOL BruteForceBufferSizes();
-    BOOL ReadBruteforceResult(TCHAR*, IoctlStorage*);
+    BOOL ReadBruteforceResult(TCHAR*, BOOL*, IoctlStorage*);
     BOOL WriteBruteforceResult(TCHAR*, IoctlStorage*);
     VOID FuzzIOCTLs(HANDLE, IoctlStorage*, DWORD, ULONG, PULONG, ULONG, ULONG);
     VOID usage(void);
