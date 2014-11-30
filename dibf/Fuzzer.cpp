@@ -133,10 +133,10 @@ VOID Fuzzer::Tracker::Stats::print()
         == CompletedRequests ? L"Yes" : L"No (it's ok)");
     // Cleanup completed
     if(!AllocatedRequests && !PendingRequests) {
-        TPRINT(VERBOSITY_INFO, L"Cleanup completed, no request still allocated nor pending\n");
+        TPRINT(VERBOSITY_ALL, L"Cleanup completed, no request still allocated nor pending\n");
     }
     else {
-        TPRINT(VERBOSITY_INFO, L"Cleanup incomplete, %u request%s still allocated, %u pending\n", AllocatedRequests, AllocatedRequests>1?L"s":L"", PendingRequests);
+        TPRINT(VERBOSITY_ALL, L"Cleanup incomplete, %u request%s still allocated, %u pending\n", AllocatedRequests, AllocatedRequests>1?L"s":L"", PendingRequests);
     }
     TPRINT(VERBOSITY_ALL, L"----\n");
     printDateTime(TRUE);

@@ -429,11 +429,13 @@ BOOL Dibf::ReadBruteforceResult(TCHAR *clDeviceName, BOOL *pGotDeviceName, Ioctl
                                 do {
                                     res =_stscanf_s(pCurrent, L"%x %d %d%n[^\n]", &pIOCTLStorage->ioctls[dwIOCTLIndex].dwIOCTL, &pIOCTLStorage->ioctls[dwIOCTLIndex].dwLowerSize, &pIOCTLStorage->ioctls[dwIOCTLIndex].dwUpperSize, &charsRead);
                                     pCurrent += charsRead+1;
-                                    TPRINT(VERBOSITY_ALL, L"Loaded IOCTL %#.8x [%u, %u]\n", pIOCTLStorage->ioctls[dwIOCTLIndex].dwIOCTL, pIOCTLStorage->ioctls[dwIOCTLIndex].dwLowerSize, pIOCTLStorage->ioctls[dwIOCTLIndex].dwUpperSize);
+                                    if(res==3) {
+                                        TPRINT(VERBOSITY_ALL, L"Loaded IOCTL %#.8x [%u, %u]\n", pIOCTLStorage->ioctls[dwIOCTLIndex].dwIOCTL, pIOCTLStorage->ioctls[dwIOCTLIndex].dwLowerSize, pIOCTLStorage->ioctls[dwIOCTLIndex].dwUpperSize);
+                                    }
                                 }
                                 while(res==3 && ++dwIOCTLIndex<MAX_IOCTLS);
                                 TPRINT(VERBOSITY_DEFAULT, L"Found and successfully loaded values from %s\n", DIBF_BF_LOG_FILE);
-                                TPRINT(VERBOSITY_INFO, L" Device name: %s\n", deviceName);
+                                TPRINT(VERBOSITY_INFO, L" Device name: %s\n", gotDeviceName?deviceName:clDeviceName);
                                 TPRINT(VERBOSITY_INFO, L" Number of IOCTLs: %d\n", dwIOCTLIndex);
                                 // Write back the number of IOCTLs
                                 pIOCTLStorage->count = dwIOCTLIndex;
@@ -496,10 +498,10 @@ BOOL Dibf::ReadBruteforceResult(TCHAR *clDeviceName, BOOL *pGotDeviceName, Ioctl
 VOID Dibf::FuzzIOCTLs(HANDLE hDevice, IoctlStorage *pIOCTLStorage, DWORD dwFuzzStage, ULONG maxThreads, PULONG timeLimits, ULONG maxPending, ULONG cancelRate)
 {
     // If enabled by command line, run sliding DWORD fuzzer
-    if(timeLimits[1]&&(dwFuzzStage & DWORD_FUZZER) == DWORD_FUZZER) {
+    if(timeLimits[0]&&(dwFuzzStage & DWORD_FUZZER) == DWORD_FUZZER) {
         TPRINT(VERBOSITY_DEFAULT, L"<<<< RUNNING SLIDING DWORD FUZZER >>>>\n");
         Fuzzer::printDateTime(FALSE);
-        SyncFuzzer *syncf = new SyncFuzzer(hDevice, new SlidingDwordFuzzer(pIOCTLStorage));
+        SyncFuzzer *syncf = new SyncFuzzer(hDevice, timeLimits[0], new SlidingDwordFuzzer(pIOCTLStorage));
         if(syncf->init()) {
             syncf->start();
         }
@@ -510,10 +512,10 @@ VOID Dibf::FuzzIOCTLs(HANDLE hDevice, IoctlStorage *pIOCTLStorage, DWORD dwFuzzS
         delete syncf;
     }
     // If enabled by command line, run pure random fuzzer
-    if(timeLimits[0]&&(dwFuzzStage & RANDOM_FUZZER)==RANDOM_FUZZER) {
+    if(timeLimits[1]&&(dwFuzzStage & RANDOM_FUZZER)==RANDOM_FUZZER) {
         TPRINT(VERBOSITY_DEFAULT, L"<<<< RUNNING RANDOM FUZZER >>>>\n");
         Fuzzer::printDateTime(FALSE);
-        AsyncFuzzer *asyncf = new AsyncFuzzer(hDevice, timeLimits[2], maxPending, cancelRate, new Dumbfuzzer(pIOCTLStorage));
+        AsyncFuzzer *asyncf = new AsyncFuzzer(hDevice, timeLimits[1], maxPending, cancelRate, new Dumbfuzzer(pIOCTLStorage));
         if(asyncf->init(maxThreads)) {
             asyncf->start();
         }
@@ -523,7 +525,7 @@ VOID Dibf::FuzzIOCTLs(HANDLE hDevice, IoctlStorage *pIOCTLStorage, DWORD dwFuzzS
         Fuzzer::tracker.stats.print();
         delete asyncf;
     }
-    // If enabled by command line, run async fuzzer
+    // If enabled by command line, run peach fuzzer
     if(timeLimits[2]&&(dwFuzzStage & PEACH_FUZZER) == PEACH_FUZZER) {
         TPRINT(VERBOSITY_DEFAULT, L"<<<< RUNNING PEACH FUZZER >>>>\n");
         Fuzzer::printDateTime(FALSE);

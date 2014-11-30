@@ -42,7 +42,6 @@ public:
 protected:
     // Vars
     HANDLE hDev;
-    IoctlStorage *ioctls;
     ULONG timeLimit;
     FuzzingProvider *fuzzingProvider;
     volatile DWORD state; // Current state

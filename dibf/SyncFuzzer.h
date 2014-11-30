@@ -10,7 +10,7 @@
 class SyncFuzzer : public Fuzzer
 {
 public:
-    SyncFuzzer(HANDLE, FuzzingProvider*);
+    SyncFuzzer(HANDLE, ULONG, FuzzingProvider*);
     ~SyncFuzzer();
     BOOL init();
     BOOL start();

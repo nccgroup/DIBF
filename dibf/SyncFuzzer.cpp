@@ -1,10 +1,11 @@
 #include "stdafx.h"
 #include "SyncFuzzer.h"
 
-SyncFuzzer::SyncFuzzer(HANDLE hDevice, FuzzingProvider *provider) : Fuzzer(provider)
+SyncFuzzer::SyncFuzzer(HANDLE hDevice, ULONG timeLimit, FuzzingProvider *provider) : Fuzzer(provider)
 {
     TPRINT(VERBOSITY_DEBUG, L"AsyncFuzzer constructor\n");
     this->hDev = hDevice;
+    this->timeLimit = timeLimit;
 }
 
 SyncFuzzer::~SyncFuzzer()
