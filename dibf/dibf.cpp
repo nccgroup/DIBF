@@ -213,7 +213,6 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
         if(!bIgnoreFile) {
             // Attempt to read file
             TPRINT(VERBOSITY_DEFAULT, L"<<<< CAPTURING IOCTL DEFINITIONS FROM FILE >>>>\n");
-            // TODO: only check device name from command line IF ANY
             bIoctls = ReadBruteforceResult(pDeviceName, &gotDeviceName, &IOCTLStorage);
         }
         // If we don't have thee ioctls defs from file

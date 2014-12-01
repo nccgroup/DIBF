@@ -83,9 +83,9 @@ BOOL SlidingDwordFuzzer::fuzzRequest(IoRequest *request, std::mt19937 *threadRan
 
     while(retry) {
         // Check for ioctls exhaustion
-        if(ioctlIndex<ioStore->count-1) {
+        if(ioctlIndex<ioStore->count) {
             // Check that we have another DWORD to try sliding
-            if(iteration<_countof(DWORDArray)-1) {
+            if(iteration<_countof(DWORDArray)) {
                 // Check that we have room in this buffer
                 if(position<ioStore->ioctls[ioctlIndex].dwUpperSize-sizeof(DWORD)) {
                     // exit and fuzz
@@ -110,7 +110,6 @@ BOOL SlidingDwordFuzzer::fuzzRequest(IoRequest *request, std::mt19937 *threadRan
             retry = FALSE;
         }
     }
-
     // bResult indicates we have all we need to fuzz
     if(bResult) {
         // Set code
@@ -126,7 +125,7 @@ BOOL SlidingDwordFuzzer::fuzzRequest(IoRequest *request, std::mt19937 *threadRan
             *((DWORD*)pCurrentPosition) = DWORDArray[iteration];
         }
         // Iterating
-        position += sizeof(DWORD);
+        position++;
     }
     return bResult;
 }

@@ -31,29 +31,27 @@ DWORD SyncFuzzer::FuzzProc(PVOID param)
     // Initialize thread's PRNG
     std::mt19937 prng(UNLFOLD_LOW_WORD(GetCurrentThreadId())^GetTickCount());
     while(syncFuzzer->state==STATE_FUZZING) {
-        if(nbConsecutiveFailures<MAX_CONSECUTIVE_FAILURES) {
-            if(syncFuzzer->fuzzingProvider->fuzzRequest(&request, &prng)) {
-                bResult = request.sendSync();
-                TPRINT(VERBOSITY_ALL, L"TID[%.4u]: Sent request %#.8x (iocode %#.8x)\n", GetCurrentThreadId(), &request, request.GetIoCode());
-                InterlockedIncrement(&tracker.stats.SynchronousRequests);
-                InterlockedIncrement(&tracker.stats.SentRequests);
-                InterlockedIncrement(&tracker.stats.CompletedRequests);
-                if(bResult) {
-                    InterlockedIncrement(&tracker.stats.SuccessfulRequests);
-                    nbConsecutiveFailures = 0;
-                }
-                else {
-                    InterlockedIncrement(&tracker.stats.FailedRequests);
-                    nbConsecutiveFailures++;
-                }
+        if(syncFuzzer->fuzzingProvider->fuzzRequest(&request, &prng)) {
+            bResult = request.sendSync();
+            TPRINT(VERBOSITY_ALL, L"TID[%.4u]: Sent request %#.8x (iocode %#.8x)\n", GetCurrentThreadId(), &request, request.GetIoCode());
+            InterlockedIncrement(&tracker.stats.SynchronousRequests);
+            InterlockedIncrement(&tracker.stats.SentRequests);
+            InterlockedIncrement(&tracker.stats.CompletedRequests);
+            if(bResult) {
+                InterlockedIncrement(&tracker.stats.SuccessfulRequests);
+                nbConsecutiveFailures = 0;
             }
-            // No more fuzzing available from provider
             else {
-                break;
+                InterlockedIncrement(&tracker.stats.FailedRequests);
+                nbConsecutiveFailures++;
+            }
+            if(!(nbConsecutiveFailures%MAX_CONSECUTIVE_FAILURES)) {
+                TPRINT(VERBOSITY_DEFAULT, L" %u IOCTL failures in a row -- check config?\n", nbConsecutiveFailures);
             }
         }
+        // No more fuzzing available from provider
         else {
-            TPRINT(VERBOSITY_DEFAULT, L" %u IOCTL failures in a row -- check config?\n", nbConsecutiveFailures);
+            SetEvent(syncFuzzer->tracker.hEvent);
             break;
         }
     }
