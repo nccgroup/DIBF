@@ -2,9 +2,10 @@
 * dib.cpp : Defines the entry point for the console application.                   *
 *                                                                                  *
 * TODO:                                                                            *
-* - Alter code to be resilient against IOCTLs that locks                           *
+* - Alter code to be resilient against IOCTLs that lock                            *
 * - Add functionality to guess valid output size                                   *
 * - Check that error codes for guessing are adequate                               *
+* - Implement ctrl-c handling in ioctl guessing stage                              *
 ************************************************************************************/
 
 #include "stdafx.h"
@@ -261,13 +262,11 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
 //
 //OUTPUT:
 // FALSE if no ioctl was found, TRUE otherwise
-// TODO: CTRL-C INTERRUPTS RUN (OOP?)
 BOOL Dibf::BruteForceIOCTLs(DWORD dwIOCTLStart, DWORD dwIOCTLEnd, BOOL bDeepBruteForce)
 {
     DWORD dwIOCTL, dwIOCTLIndex=0;
     IoRequest ioRequest(hDevice);  // This unique request gets reused iteratively
 
-    TPRINT(VERBOSITY_ALL, L"%x, %x, %u\n", dwIOCTLStart, dwIOCTLEnd, bDeepBruteForce);
     for(dwIOCTL=dwIOCTLStart; dwIOCTL<=dwIOCTLEnd; dwIOCTL++) {
         ioRequest.SetIoCode(dwIOCTL);
         if(ioRequest.testSendForValidRequest(bDeepBruteForce)) {

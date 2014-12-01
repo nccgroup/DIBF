@@ -47,7 +47,7 @@ BOOL Dumbfuzzer::fuzzRequest(IoRequest *request, std::mt19937 *threadRandomProvi
     size = ioStore->ioctls[ioctlIndex].dwLowerSize+(HIGH_WORD(r)%(ioStore->ioctls[ioctlIndex].dwUpperSize-ioStore->ioctls[ioctlIndex].dwLowerSize));
     bResult = request->allocBuffers(size, DEFAULT_OUTLEN);
     if(bResult) {
-        // Get input buffer pointer (TODO: FIX THIS BAD OOP DESIGN)
+        // Get input buffer pointer (TODO: fix bad oop design)
         fuzzBuf = request->getInbuf();
         for(i=0; i<(INT)(size-sizeof(INT)); i+=sizeof(INT)) {
             *(PUINT)(&fuzzBuf[i]) = (*threadRandomProvider)();

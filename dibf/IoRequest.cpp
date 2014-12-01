@@ -5,11 +5,12 @@
 const DWORD IoRequest::invalidIoctlErrorCodes[] = {
     ERROR_INVALID_FUNCTION,
     ERROR_NOT_SUPPORTED,
+    ERROR_INVALID_PARAMETER,
+    ERROR_NO_SYSTEM_RESOURCES
 };
 const DWORD IoRequest::invalidBufSizeErrorCodes[] = {
     ERROR_INSUFFICIENT_BUFFER,
     ERROR_BAD_LENGTH,
-    ERROR_INVALID_PARAMETER
 };
 
 // Quick template to find error code in regular static c arrays
@@ -129,7 +130,6 @@ DWORD IoRequest::sendAsync()
     return dwResult;
 }
 
-// TODO: CHECK DEEP PROBING FEATURE WORKS AS EXPECTED
 BOOL IoRequest::testSendForValidRequest(BOOL deep)
 {
     BOOL bResult=FALSE;

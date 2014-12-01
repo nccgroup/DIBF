@@ -154,7 +154,6 @@ BOOL _inline AsyncFuzzer::AllowNewAllocation()
 // TRUE for success
 // FALSE for error
 //
-//// TODO: SPLIT IN SUB FUNCTIONS
 DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
 {
     UINT status;
@@ -260,7 +259,6 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
                 request->reset();
             }
             if(!request) {
-                // TODO: WHAT THEN?
                 TPRINT(VERBOSITY_ERROR, L"TID[%.4u]: Failed to allocate new request (keep going with existing %u request allocations)\n", GetCurrentThreadId(), Fuzzer::tracker.stats.AllocatedRequests);
                 break;
             }
