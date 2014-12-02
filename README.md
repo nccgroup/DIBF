@@ -8,7 +8,7 @@ This tool encompasses two distinct features. It guesses the IOCTL values that th
 
 ## IOSEND ##
 ### Sending single IOCTL to a driver ###
-This is a tool intended for proofing vulnerabilities and is meant to be used in conjunction with a hex-editor. Once the request of interest has been crafted in it, this utility will send it to the driver using command line parameters. The response gets sent to stdout.
+This is a tool intended for proofing vulnerabilities and is meant to be used in conjunction with a hex-editor. Once the request of interest has been crafted in it, this utility will send it to the driver using command line parameters. The response gets sent to stdout. Arbitrary addresses can also be used as input and output buffer addresses.
 
 ## IOCODE ##
 ### Simple encoding/decoding utility for IO codes ###
@@ -54,10 +54,11 @@ This very simple tool encodes and decodes windows IOCTL control codes. It provid
 	iocode.exe [IOCODE] or iocode.exe [DEVICE_TYPE] [FUNCTION] [METHOD] [ACCESS]
 
 -----
-	iosend.exe [Device] [IOCODE] [InputBufFilePath] [InputLen] [OutputLen] > [Output file]
+	iosend [Device] [IOCODE] [InputBufFilePath|InputAdress] [InputLen] [[OutputAddress]] [OutputLen] > [Output file]
 	Notes:
- 		- This utility prints error/status messages to stderr
- 		- Upon successful IOCTL, output data is written to stdout
+	 - This utility prints error/status messages to stderr
+	 - Input can be provided as an arbitrary address or a file name
+	 - An output buffer is allocated and its contents eventually written to stdout unless the optional OutputAddress parameter is provided
 
 
 ## DIBF Sample Output ##
