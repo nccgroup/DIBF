@@ -92,6 +92,23 @@ BOOL IoRequest::allocBuffers(DWORD inSize, DWORD outSize)
     return bResult;
 }
 
+VOID IoRequest::assignBuffers(PUCHAR inBuf, PUCHAR outBuf)
+{
+    if(inBuf) {
+        if(inSize) {
+            HeapFree(GetProcessHeap(), 0, this->inBuf);
+        }
+        this->inBuf = inBuf;
+    }
+    if(outBuf) {
+        if(outSize) {
+            HeapFree(GetProcessHeap(), 0, this->outBuf);
+        }
+        this->outBuf = outBuf;
+    }
+    return;
+}
+
 BOOL IoRequest::sendRequest(BOOL async, PDWORD lastError)
 {
     BOOL bResult;
@@ -168,5 +185,17 @@ BOOL IoRequest::testSendForValidBufferSize(DWORD testSize)
         bResult = sendRequest(FALSE, &lastError) || IsValidSize(lastError);
         FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM|FORMAT_MESSAGE_ALLOCATE_BUFFER, 0, lastError, 0, (LPTSTR)&errormessage, 4, NULL);
     } // if allocbuffers
+    return bResult;
+}
+
+BOOL IoRequest::fuzz(FuzzingProvider* fp, std::mt19937* prng)
+{
+    BOOL bResult=FALSE;
+    PUCHAR newBuf;
+
+    bResult = fp->GetRandomIoctlAndBuffer(&iocode, &newBuf, &inSize, prng);
+    if(bResult) {
+        assignBuffers(newBuf, 0);
+    }
     return bResult;
 }

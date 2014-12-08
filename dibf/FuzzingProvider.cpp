@@ -30,25 +30,21 @@ Dumbfuzzer::~Dumbfuzzer()
     return;
 }
 
-BOOL Dumbfuzzer::fuzzRequest(IoRequest *request, std::mt19937 *threadRandomProvider)
+BOOL Dumbfuzzer::GetRandomIoctlAndBuffer(PDWORD iocode, PUCHAR *buffer, PDWORD bufSize, std::mt19937 *threadRandomProvider)
 {
     BOOL bResult=FALSE;
     INT i;
     UINT r;
     DWORD size, ioctlIndex;
-    PUCHAR fuzzBuf;
+    PUCHAR fuzzBuf=NULL;
 
     r = (*threadRandomProvider)();
     // Pick random ioctl def
     ioctlIndex = LOW_WORD(r)%ioStore->count;
-    // Set code
-    request->SetIoCode(ioStore->ioctls[ioctlIndex].dwIOCTL);
     // Get random size between low and high limits
     size = ioStore->ioctls[ioctlIndex].dwLowerSize+(HIGH_WORD(r)%(ioStore->ioctls[ioctlIndex].dwUpperSize-ioStore->ioctls[ioctlIndex].dwLowerSize));
-    bResult = request->allocBuffers(size, DEFAULT_OUTLEN);
-    if(bResult) {
-        // Get input buffer pointer (TODO: fix bad oop design)
-        fuzzBuf = request->getInbuf();
+    fuzzBuf = (PUCHAR)HeapAlloc(GetProcessHeap(), 0, size);
+    if(fuzzBuf) {
         for(i=0; i<(INT)(size-sizeof(INT)); i+=sizeof(INT)) {
             *(PUINT)(&fuzzBuf[i]) = (*threadRandomProvider)();
         }
@@ -57,6 +53,11 @@ BOOL Dumbfuzzer::fuzzRequest(IoRequest *request, std::mt19937 *threadRandomProvi
         for(INT j=0; i<(INT)size; i++,j+=8) {
             fuzzBuf[i] = (UCHAR)((r>>j)&0xff);
         }
+        // Set code
+        *iocode = ioStore->ioctls[ioctlIndex].dwIOCTL;
+        *bufSize = size;
+        *buffer = fuzzBuf;
+        bResult = TRUE;
     }
     return bResult;
 }
@@ -73,11 +74,11 @@ SlidingDwordFuzzer::~SlidingDwordFuzzer()
     return;
 }
 
-BOOL SlidingDwordFuzzer::fuzzRequest(IoRequest *request, std::mt19937 *threadRandomProvider)
+BOOL SlidingDwordFuzzer::GetRandomIoctlAndBuffer(PDWORD iocode, PUCHAR *buffer, PDWORD bufSize, std::mt19937 *threadRandomProvider)
 {
     BOOL bResult=FALSE, retry=TRUE;
     DWORD size;
-    PUCHAR fuzzBuf, pCurrentPosition;
+    PUCHAR fuzzBuf=NULL, pCurrentPosition;
 
     UNREFERENCED_PARAMETER(threadRandomProvider);
 
@@ -112,17 +113,21 @@ BOOL SlidingDwordFuzzer::fuzzRequest(IoRequest *request, std::mt19937 *threadRan
     }
     // bResult indicates we have all we need to fuzz
     if(bResult) {
-        // Set code
-        request->SetIoCode(ioStore->ioctls[ioctlIndex].dwIOCTL);
+        // Reset return value
+        bResult = FALSE;
         // Get max size for this ioctl
         size = ioStore->ioctls[ioctlIndex].dwUpperSize;
         // Alloc buffers
-        bResult = request->allocBuffers(size, DEFAULT_OUTLEN);
-        if(bResult) {
-            fuzzBuf = request->getInbuf();
+        fuzzBuf = (PUCHAR)HeapAlloc(GetProcessHeap(), 0, size);
+        if(fuzzBuf) {
             pCurrentPosition = fuzzBuf+position;
             ZeroMemory(fuzzBuf, size);
             *((DWORD*)pCurrentPosition) = DWORDArray[iteration];
+            // Set code
+            *iocode = ioStore->ioctls[ioctlIndex].dwIOCTL;
+            *bufSize = size;
+            *buffer = fuzzBuf;
+            bResult = TRUE;
         }
         // Iterating
         position++;

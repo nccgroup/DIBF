@@ -263,7 +263,7 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
                 break;
             }
             // Craft a fuzzed request
-            bResult = asyncfuzzer->fuzzingProvider->fuzzRequest(request, &prng);
+            bResult = request->fuzz(asyncfuzzer->fuzzingProvider, &prng);
             // If request fuzzed and ready for sending
             if(bResult) {
                 // Fire IOCTL

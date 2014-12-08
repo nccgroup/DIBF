@@ -1,6 +1,7 @@
 #pragma once
 #include "stdafx.h"
 #include "common.h"
+#include "FuzzingProvider.h"
 
 #define MAX_IOCTLS 512
 #define DEEP_BF_MAX ((DWORD)32)
@@ -22,6 +23,7 @@ public:
     BOOL sendSync();
     DWORD sendAsync();
     BOOL allocBuffers(DWORD, DWORD);
+    BOOL fuzz(FuzzingProvider*, std::mt19937*);
     UCHAR *getInbuf();
 private:
     // Static arrays of known interesting errors
@@ -37,4 +39,5 @@ private:
     DWORD bytesreturned;
     // Functions
     BOOL sendRequest(BOOL, PDWORD);
+    VOID assignBuffers(PUCHAR, PUCHAR);
 };

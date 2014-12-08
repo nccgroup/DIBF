@@ -30,8 +30,11 @@ DWORD SyncFuzzer::FuzzProc(PVOID param)
 
     // Initialize thread's PRNG
     std::mt19937 prng(UNLFOLD_LOW_WORD(GetCurrentThreadId())^GetTickCount());
+    // Initialize output buffer
+    request.allocBuffers(0, DEFAULT_OUTLEN);
     while(syncFuzzer->state==STATE_FUZZING) {
-        if(syncFuzzer->fuzzingProvider->fuzzRequest(&request, &prng)) {
+        bResult = request.fuzz(syncFuzzer->fuzzingProvider, &prng);
+        if(bResult) {
             bResult = request.sendSync();
             TPRINT(VERBOSITY_ALL, L"TID[%.4u]: Sent request %#.8x (iocode %#.8x)\n", GetCurrentThreadId(), &request, request.GetIoCode());
             InterlockedIncrement(&tracker.stats.SynchronousRequests);
@@ -45,8 +48,9 @@ DWORD SyncFuzzer::FuzzProc(PVOID param)
                 InterlockedIncrement(&tracker.stats.FailedRequests);
                 nbConsecutiveFailures++;
             }
-            if(!(nbConsecutiveFailures%MAX_CONSECUTIVE_FAILURES)) {
+            if(nbConsecutiveFailures==MAX_CONSECUTIVE_FAILURES) {
                 TPRINT(VERBOSITY_DEFAULT, L" %u IOCTL failures in a row -- check config?\n", nbConsecutiveFailures);
+                nbConsecutiveFailures = 0;
             }
         }
         // No more fuzzing available from provider
