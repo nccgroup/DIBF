@@ -546,8 +546,8 @@ VOID Dibf::usage(VOID)
 {
     TPRINT(VERBOSITY_DEFAULT, L"---------------------------------------------------------------------------\n");
     TPRINT(VERBOSITY_DEFAULT, L"DIBF - Device IOCTL Bruteforcer and Fuzzer\n");
-    TPRINT(VERBOSITY_DEFAULT, L"(C)2014 andreas at isecpartners dot com\n");
-    TPRINT(VERBOSITY_DEFAULT, L"(C)2014 nguigo at isecpartners dot com\n");
+    TPRINT(VERBOSITY_DEFAULT, L"(C)2014-2015 andreas at isecpartners dot com\n");
+    TPRINT(VERBOSITY_DEFAULT, L"(C)2014-2015 nguigo at isecpartners dot com\n");
     TPRINT(VERBOSITY_DEFAULT, L"---------------------------------------------------------------------------\n");
     TPRINT(VERBOSITY_DEFAULT, L"Usage:\n");
     TPRINT(VERBOSITY_DEFAULT, L" dibf <options> <device name>\n");
@@ -563,7 +563,7 @@ VOID Dibf::usage(VOID)
     TPRINT(VERBOSITY_DEFAULT, L" -a [max threads] Max number of threads, VERBOSITY_DEFAULT is 2xNbOfProcessors, max is %d\n", MAX_THREADS);
     TPRINT(VERBOSITY_DEFAULT, L" -c [%% cancelation] Async cancelation attempt percent rate (VERBOSITY_DEFAULT %d)\n", CANCEL_RATE);
     TPRINT(VERBOSITY_DEFAULT, L" -f [0-7] Fuzz flag. OR values together to run multiple\n");
-    TPRINT(VERBOSITY_DEFAULT, L"          fuzzer stages. If left out, it VERBOSITY_DEFAULTs to all\n");
+    TPRINT(VERBOSITY_DEFAULT, L"          fuzzer stages. If left out, it defaults to all\n");
     TPRINT(VERBOSITY_DEFAULT, L"          stages.\n");
     TPRINT(VERBOSITY_DEFAULT, L"          0 = Brute-force IOCTLs only\n");
     TPRINT(VERBOSITY_DEFAULT, L"          1 = Sliding DWORD (sync)\n");

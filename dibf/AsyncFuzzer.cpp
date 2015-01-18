@@ -166,7 +166,7 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
     // Get asyncfuzzer
     AsyncFuzzer *asyncfuzzer = (AsyncFuzzer*)param;
     // Initialize thread's PRNG
-    std::mt19937 prng(UNLFOLD_LOW_WORD(GetCurrentThreadId())^GetTickCount());
+    mt19937 prng(UNLFOLD_LOW_WORD(GetCurrentThreadId())^GetTickCount());
     do {
         // Dequeue I/O packet
         bResult = GetQueuedCompletionStatus(asyncfuzzer->hIocp, &nbOfBytes, &specialPacket, &pOvrlp, INFINITE);

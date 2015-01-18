@@ -5,10 +5,13 @@
 
 #pragma once
 
+// Windows
 #include "targetver.h"
 #include <stdio.h>
 #include <tchar.h>
 #include <Windows.h>
 #include <time.h>
+// C++
 #include <random>
-#include <array>
+#include <vector>
+using namespace std;

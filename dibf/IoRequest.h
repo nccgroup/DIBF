@@ -14,17 +14,15 @@ public:
     IoRequest(HANDLE);
     IoRequest(HANDLE, DWORD);
     ~IoRequest();
+    OVERLAPPED overlp; // oop?
     DWORD GetIoCode() {return iocode;}
     VOID SetIoCode(DWORD iocode) {this->iocode=iocode;}
-    OVERLAPPED overlp;
     BOOL testSendForValidRequest(BOOL);
     BOOL testSendForValidBufferSize(DWORD);
     VOID reset();
     BOOL sendSync();
     DWORD sendAsync();
-    BOOL allocBuffers(DWORD, DWORD);
-    BOOL fuzz(FuzzingProvider*, std::mt19937*);
-    UCHAR *getInbuf();
+    BOOL fuzz(FuzzingProvider*, mt19937*);
 private:
     // Static arrays of known interesting errors
     static const DWORD invalidIoctlErrorCodes[];
@@ -32,12 +30,12 @@ private:
     // Members
     HANDLE hDev;
     DWORD iocode;
-    UCHAR *inBuf;
-    UCHAR *outBuf;
-    DWORD inSize;
-    DWORD outSize;
+    vector<UCHAR> *inBuf;
+    vector<UCHAR> outBuf;
     DWORD bytesreturned;
     // Functions
+    BOOL allocBuffers(DWORD, DWORD);
     BOOL sendRequest(BOOL, PDWORD);
-    VOID assignBuffers(PUCHAR, PUCHAR);
+    DWORD getInputBufferLength(){return inBuf->size()*sizeof(UCHAR);}
+    DWORD getOutputBufferLength(){return outBuf.size()*sizeof(UCHAR);}
 };

@@ -29,9 +29,7 @@ DWORD SyncFuzzer::FuzzProc(PVOID param)
     IoRequest request(syncFuzzer->hDev);
 
     // Initialize thread's PRNG
-    std::mt19937 prng(UNLFOLD_LOW_WORD(GetCurrentThreadId())^GetTickCount());
-    // Initialize output buffer
-    request.allocBuffers(0, DEFAULT_OUTLEN);
+    mt19937 prng(UNLFOLD_LOW_WORD(GetCurrentThreadId())^GetTickCount());
     while(syncFuzzer->state==STATE_FUZZING) {
         bResult = request.fuzz(syncFuzzer->fuzzingProvider, &prng);
         if(bResult) {

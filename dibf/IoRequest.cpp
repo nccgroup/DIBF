@@ -19,7 +19,7 @@ static BOOL IsInCArray(const DWORD (&table)[SIZE], DWORD error)
 {
     BOOL bResult=FALSE;
 
-    if(std::find(std::begin(table), std::end(table), error) != std::end(table)) {
+    if(find(begin(table), end(table), error)!= end(table)) {
         bResult = TRUE;
     }
     return bResult;
@@ -29,13 +29,15 @@ static BOOL IsInCArray(const DWORD (&table)[SIZE], DWORD error)
 #define IsValidSize(ERROR) (!IsInCArray<_countof(invalidBufSizeErrorCodes)>(invalidBufSizeErrorCodes, ERROR))
 
 // Simple constructors
-IoRequest::IoRequest(HANDLE hDev) : hDev(hDev), inBuf(NULL), outBuf(NULL), inSize(0), outSize(0)
+IoRequest::IoRequest(HANDLE hDev) : hDev(hDev)
 {
+    inBuf = new vector<UCHAR>();
     ZeroMemory(&overlp, sizeof(overlp));
 }
 
-IoRequest::IoRequest(HANDLE hDev, DWORD code) : hDev(hDev), iocode(code), inBuf(NULL), outBuf(NULL), inSize(0), outSize(0)
+IoRequest::IoRequest(HANDLE hDev, DWORD code) : hDev(hDev), iocode(code)
 {
+    inBuf = new vector<UCHAR>();
     ZeroMemory(&overlp, sizeof(overlp));
 }
 
@@ -47,66 +49,22 @@ VOID IoRequest::reset()
 
 IoRequest::~IoRequest()
 {
-    if(inBuf) {
-        HeapFree(GetProcessHeap(), 0x0, inBuf);
-    }
-    if(outBuf) {
-        HeapFree(GetProcessHeap(), 0x0, outBuf);
-    }
+    delete inBuf;
     return;
-}
-
-UCHAR *IoRequest::getInbuf()
-{
-    return inBuf;
 }
 
 BOOL IoRequest::allocBuffers(DWORD inSize, DWORD outSize)
 {
     BOOL bResult=TRUE;
-    PUCHAR buf;
-
-    // If input buffer is requested and size is different
-    if(inSize!=this->inSize) {
-        // Realloc should (right?) optimize quick return if the requested size is already allocated
-        buf = inBuf ? (UCHAR*)HeapReAlloc(GetProcessHeap(), 0, inBuf, inSize) : (UCHAR*)HeapAlloc(GetProcessHeap(), 0, inSize);
-        if(buf) {
-            this->inBuf = buf;
-            this->inSize = inSize;
-        }
-        else {
-            bResult = FALSE;
-        }
+    try {
+        inBuf->resize(inSize);
+        outBuf.resize(outSize);
+        bResult = TRUE;
     }
-    if(outSize!=this->outSize && bResult) {
-        // Realloc should (right?) optimize quick return if the requested size is already allocated
-        buf = outBuf ? (UCHAR*)HeapReAlloc(GetProcessHeap(), 0, outBuf, outSize) : (UCHAR*)HeapAlloc(GetProcessHeap(), 0, outSize);
-        if(buf) {
-            this->outBuf = buf;
-            this->outSize = outSize;
-        }
-        else {
-            bResult = FALSE;
-        }
+    catch(bad_alloc) {
+        bResult = FALSE;
     }
     return bResult;
-}
-
-VOID IoRequest::assignBuffers(PUCHAR inBuf, PUCHAR outBuf)
-{
-    if(inBuf) {
-        if(inSize) {
-            HeapFree(GetProcessHeap(), 0, this->inBuf);
-        }
-        this->inBuf = inBuf;
-    }
-    if(outBuf) {
-        if(outSize) {
-            HeapFree(GetProcessHeap(), 0, this->outBuf);
-        }
-        this->outBuf = outBuf;
-    }
-    return;
 }
 
 BOOL IoRequest::sendRequest(BOOL async, PDWORD lastError)
@@ -114,7 +72,7 @@ BOOL IoRequest::sendRequest(BOOL async, PDWORD lastError)
     BOOL bResult;
     DWORD dwBytes;
 
-    bResult = DeviceIoControl(hDev, iocode, inBuf, inSize, outBuf, outSize, &dwBytes, async ? &overlp : NULL);
+    bResult = DeviceIoControl(hDev, iocode, inBuf->data(), getInputBufferLength(), outBuf.data(), getOutputBufferLength(), &dwBytes, async ? &overlp : NULL);
     if(!bResult) {
         *lastError = GetLastError();
     }
@@ -156,8 +114,7 @@ BOOL IoRequest::testSendForValidRequest(BOOL deep)
     // If deep, attempt inlen 0-256 otherwise just try inlen 32
     // outlen is always 256 (usually there's only an upper bound)
     for(dwSize=deep?0:DEEP_BF_MAX; !bResult&&dwSize<=DEEP_BF_MAX; dwSize+=4) {
-        bResult = allocBuffers(dwSize, DEFAULT_OUTLEN);
-        if(bResult) {
+        if(allocBuffers(dwSize, DEFAULT_OUTLEN)) {
             bResult = sendRequest(FALSE, &lastError) || IsValidCode(lastError);
         }
     }
@@ -188,14 +145,16 @@ BOOL IoRequest::testSendForValidBufferSize(DWORD testSize)
     return bResult;
 }
 
-BOOL IoRequest::fuzz(FuzzingProvider* fp, std::mt19937* prng)
+BOOL IoRequest::fuzz(FuzzingProvider* fp, mt19937* prng)
 {
     BOOL bResult=FALSE;
-    PUCHAR newBuf;
+    vector<UCHAR> *fuzzBuf;
 
-    bResult = fp->GetRandomIoctlAndBuffer(&iocode, &newBuf, &inSize, prng);
+    bResult = fp->GetRandomIoctlAndBuffer(&iocode, &fuzzBuf, prng);
     if(bResult) {
-        assignBuffers(newBuf, 0);
+        // Replace input buffer
+        delete inBuf;   // cheaper than copy
+        inBuf = fuzzBuf;
     }
     return bResult;
 }
