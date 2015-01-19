@@ -525,7 +525,7 @@ VOID Dibf::FuzzIOCTLs(HANDLE hDevice, IoctlStorage *pIOCTLStorage, DWORD dwFuzzS
     }
     // If enabled by command line, run peach fuzzer
     if(timeLimits[2]&&(dwFuzzStage & PEACH_FUZZER) == PEACH_FUZZER) {
-        TPRINT(VERBOSITY_DEFAULT, L"<<<< RUNNING PEACH FUZZER >>>>\n");
+        TPRINT(VERBOSITY_DEFAULT, L"<<<< RUNNING CUSTOM FUZZER >>>>\n");
         Fuzzer::printDateTime(FALSE);
         TPRINT(VERBOSITY_DEFAULT, L"NOT IMPLMENTED\n");
         Fuzzer::tracker.stats.print();
@@ -568,7 +568,7 @@ VOID Dibf::usage(VOID)
     TPRINT(VERBOSITY_DEFAULT, L"          0 = Brute-force IOCTLs only\n");
     TPRINT(VERBOSITY_DEFAULT, L"          1 = Sliding DWORD (sync)\n");
     TPRINT(VERBOSITY_DEFAULT, L"          2 = Random (async)\n");
-    TPRINT(VERBOSITY_DEFAULT, L"          4 = Peach (async)\n");
+    TPRINT(VERBOSITY_DEFAULT, L"          4 = Custom (sync/async)\n");
     TPRINT(VERBOSITY_DEFAULT, L"Examples:\n");
     TPRINT(VERBOSITY_DEFAULT, L" dibf \\\\.\\MyDevice\n");
     TPRINT(VERBOSITY_DEFAULT, L" dibf -v -d -s 0x10000000 \\\\.\\MyDevice\n");
