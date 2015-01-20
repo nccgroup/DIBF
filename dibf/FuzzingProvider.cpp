@@ -130,3 +130,69 @@ BOOL SlidingDwordFuzzer::GetRandomIoctlAndBuffer(PDWORD iocode, vector<UCHAR> **
     }
     return bResult;
 }
+
+NamedPipeInputFuzzer::NamedPipeInputFuzzer()
+{
+    TPRINT(VERBOSITY_DEBUG, L"NamedPipeInputFuzzer constructor\n");
+    return;
+}
+
+BOOL NamedPipeInputFuzzer::Init()
+{
+    BOOL bResult=FALSE;
+
+    dibf_pipe = CreateNamedPipe(L"\\\\.\\pipe\\dibf_pipe",
+                                PIPE_ACCESS_INBOUND,
+                                PIPE_TYPE_MESSAGE|PIPE_READMODE_MESSAGE|PIPE_WAIT|PIPE_REJECT_REMOTE_CLIENTS,
+                                1,
+                                512,
+                                512,
+                                0,
+                                NULL);
+    if(dibf_pipe!=INVALID_HANDLE_VALUE) {
+        TPRINT(VERBOSITY_INFO, L"Named pipe created, waiting for connection...\n");
+        if(ConnectNamedPipe(dibf_pipe, NULL)?TRUE:(GetLastError()==ERROR_PIPE_CONNECTED)) {
+            TPRINT(VERBOSITY_INFO, L"Fuzzing client connected to named pipe\n");
+            bResult = TRUE;
+        }
+    }
+    return bResult;
+}
+
+NamedPipeInputFuzzer::~NamedPipeInputFuzzer()
+{
+    TPRINT(VERBOSITY_DEBUG, L"NamedPipeInputFuzzer destructor\n");
+    if(dibf_pipe!=INVALID_HANDLE_VALUE) {
+        CloseHandle(dibf_pipe);
+    }
+    return;
+}
+
+BOOL NamedPipeInputFuzzer::GetRandomIoctlAndBuffer(PDWORD iocode, vector<UCHAR> **output, mt19937 *threadRandomProvider)
+{
+    BOOL bResult=FALSE;
+    vector<UCHAR> *fuzzBuf;
+    UCHAR input[MAX_BUFSIZE+4];
+    DWORD bytesRead=0, error;
+
+    UNREFERENCED_PARAMETER(threadRandomProvider);
+
+    bResult = ReadFile(dibf_pipe, input, MAX_BUFSIZE+4, &bytesRead, NULL);
+    // Check for data reception
+    if (!bResult||!bytesRead) {
+        error = GetLastError();
+        if (error==ERROR_BROKEN_PIPE) {
+            TPRINT(VERBOSITY_ERROR, L"Named pipe client disconnected with error %#.8x\n", error);
+        }
+        else {
+            TPRINT(VERBOSITY_ERROR, L"Reading from named pipe failed with error %#.8x\n", error);
+        }
+    }
+    // Sanity check received data
+    if(bytesRead>=4) {
+        *iocode = *(PDWORD)input;
+        *output = new vector<UCHAR>(&input[4], input+bytesRead);
+        bResult = TRUE;
+    }
+    return bResult;
+}

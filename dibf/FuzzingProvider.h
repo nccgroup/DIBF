@@ -32,3 +32,14 @@ private:
     static CONST DWORD DWORDArray[];
     volatile UINT ioctlIndex, iteration, position;
 };
+
+class NamedPipeInputFuzzer : public FuzzingProvider
+{
+public:
+    NamedPipeInputFuzzer();
+    ~NamedPipeInputFuzzer();
+    BOOL Init();
+    BOOL GetRandomIoctlAndBuffer(PDWORD, vector<UCHAR>**, mt19937*);
+private:
+    HANDLE dibf_pipe;
+};

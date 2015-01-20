@@ -504,7 +504,7 @@ VOID Dibf::FuzzIOCTLs(HANDLE hDevice, IoctlStorage *pIOCTLStorage, DWORD dwFuzzS
             syncf->start();
         }
         else {
-            TPRINT(VERBOSITY_ERROR, L"SlidingDWORD fuzzer init failed. aborting run.\n");
+            TPRINT(VERBOSITY_ERROR, L"SlidingDWORD fuzzer init failed. Aborting run.\n");
         }
         Fuzzer::tracker.stats.print();
         delete syncf;
@@ -518,7 +518,7 @@ VOID Dibf::FuzzIOCTLs(HANDLE hDevice, IoctlStorage *pIOCTLStorage, DWORD dwFuzzS
             asyncf->start();
         }
         else {
-            TPRINT(VERBOSITY_ERROR, L"Dumbfuzzer init failed. aborting run.\n");
+            TPRINT(VERBOSITY_ERROR, L"Dumbfuzzer init failed. Aborting run.\n");
         }
         Fuzzer::tracker.stats.print();
         delete asyncf;
@@ -527,7 +527,19 @@ VOID Dibf::FuzzIOCTLs(HANDLE hDevice, IoctlStorage *pIOCTLStorage, DWORD dwFuzzS
     if(timeLimits[2]&&(dwFuzzStage & PEACH_FUZZER) == PEACH_FUZZER) {
         TPRINT(VERBOSITY_DEFAULT, L"<<<< RUNNING CUSTOM FUZZER >>>>\n");
         Fuzzer::printDateTime(FALSE);
-        TPRINT(VERBOSITY_DEFAULT, L"NOT IMPLMENTED\n");
+        NamedPipeInputFuzzer *pipef = new NamedPipeInputFuzzer();
+        if(pipef->Init()) {
+            AsyncFuzzer *asyncf = new AsyncFuzzer(hDevice, timeLimits[2], maxPending, cancelRate, pipef);
+            if(asyncf->init(maxThreads)) {
+                asyncf->start();
+            }
+            else {
+                TPRINT(VERBOSITY_ERROR, L"Custom fuzzer init failed. Aborting run.\n");
+            }
+        }
+        else {
+            TPRINT(VERBOSITY_ERROR, L"Failed to initialize named pipe fuzzing provider. Aborting run.\n");
+        }
         Fuzzer::tracker.stats.print();
     } // if async fuzzer
     return;

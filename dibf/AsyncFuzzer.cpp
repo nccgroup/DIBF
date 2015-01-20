@@ -245,8 +245,8 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
             if(!request) {
                 // Loose request allocation limit
                 if(asyncfuzzer->AllowNewAllocation()) {
+                    TPRINT(VERBOSITY_ALL, L"TID[%.5u]: Allocating new request in addition to the %u existing ones (%u pending)\n", GetCurrentThreadId(), Fuzzer::tracker.stats.AllocatedRequests, Fuzzer::tracker.stats.PendingRequests);
                     request = new IoRequest(asyncfuzzer->hDev); // Create new request
-                    TPRINT(VERBOSITY_ALL, L"TID[%u]: Allocating new request in addition to the %u existing ones (%u pending)\n", GetCurrentThreadId(), Fuzzer::tracker.stats.AllocatedRequests, Fuzzer::tracker.stats.PendingRequests);
                     InterlockedIncrement(&Fuzzer::tracker.stats.AllocatedRequests);
                 }
                 else {
