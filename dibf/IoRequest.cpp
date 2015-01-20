@@ -29,13 +29,13 @@ static BOOL IsInCArray(const DWORD (&table)[SIZE], DWORD error)
 #define IsValidSize(ERROR) (!IsInCArray<_countof(invalidBufSizeErrorCodes)>(invalidBufSizeErrorCodes, ERROR))
 
 // Simple constructors
-IoRequest::IoRequest(HANDLE hDev) : hDev(hDev)
+IoRequest::IoRequest(HANDLE hDev) : hDev(hDev), outBuf(DEFAULT_OUTLEN)
 {
     inBuf = new vector<UCHAR>();
     ZeroMemory(&overlp, sizeof(overlp));
 }
 
-IoRequest::IoRequest(HANDLE hDev, DWORD code) : hDev(hDev), iocode(code)
+IoRequest::IoRequest(HANDLE hDev, DWORD code) : hDev(hDev), iocode(code), outBuf(DEFAULT_OUTLEN)
 {
     inBuf = new vector<UCHAR>();
     ZeroMemory(&overlp, sizeof(overlp));
