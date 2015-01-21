@@ -42,4 +42,5 @@ public:
     BOOL GetRandomIoctlAndBuffer(PDWORD, vector<UCHAR>**, mt19937*);
 private:
     HANDLE dibf_pipe;
+    CRITICAL_SECTION lock;
 };

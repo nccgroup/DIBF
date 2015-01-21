@@ -134,6 +134,7 @@ BOOL SlidingDwordFuzzer::GetRandomIoctlAndBuffer(PDWORD iocode, vector<UCHAR> **
 NamedPipeInputFuzzer::NamedPipeInputFuzzer()
 {
     TPRINT(VERBOSITY_DEBUG, L"NamedPipeInputFuzzer constructor\n");
+    InitializeCriticalSection(&lock);
     return;
 }
 
@@ -162,6 +163,7 @@ BOOL NamedPipeInputFuzzer::Init()
 NamedPipeInputFuzzer::~NamedPipeInputFuzzer()
 {
     TPRINT(VERBOSITY_DEBUG, L"NamedPipeInputFuzzer destructor\n");
+    DeleteCriticalSection(&lock);
     if(dibf_pipe!=INVALID_HANDLE_VALUE) {
         CloseHandle(dibf_pipe);
     }
@@ -170,29 +172,56 @@ NamedPipeInputFuzzer::~NamedPipeInputFuzzer()
 
 BOOL NamedPipeInputFuzzer::GetRandomIoctlAndBuffer(PDWORD iocode, vector<UCHAR> **output, mt19937 *threadRandomProvider)
 {
-    BOOL bResult=FALSE;
-    vector<UCHAR> *fuzzBuf;
+    BOOL bDone=FALSE, bResult=FALSE;
     UCHAR input[MAX_BUFSIZE+4];
+    UINT index=0;
     DWORD bytesRead=0, error;
 
     UNREFERENCED_PARAMETER(threadRandomProvider);
 
-    bResult = ReadFile(dibf_pipe, input, MAX_BUFSIZE+4, &bytesRead, NULL);
-    // Check for data reception
-    if (!bResult||!bytesRead) {
-        error = GetLastError();
-        if (error==ERROR_BROKEN_PIPE) {
-            TPRINT(VERBOSITY_ERROR, L"Named pipe client disconnected with error %#.8x\n", error);
+    EnterCriticalSection(&lock);
+    while(!bDone) {
+        bResult = ReadFile(dibf_pipe, &input[index], (MAX_BUFSIZE+4)-index, &bytesRead, NULL);
+        // Check for data reception
+        if (bResult&&bytesRead) {
+            // Update index
+            index+=bytesRead;
+            // Sanity check received data
+            if(index>=4) {
+                *iocode = *(PDWORD)input;
+                *output = new vector<UCHAR>(&input[4], &input[index]);
+                bResult = TRUE; // for clarity only
+            }
+            else {
+                bResult = FALSE;
+            }
+            bDone = TRUE;
         }
         else {
-            TPRINT(VERBOSITY_ERROR, L"Reading from named pipe failed with error %#.8x\n", error);
+            error = GetLastError();
+            switch(error) {
+            case ERROR_BROKEN_PIPE:
+                TPRINT(VERBOSITY_ERROR, L"Named pipe client disconnected\n");
+                bDone = TRUE;
+                break;
+            case ERROR_MORE_DATA:
+                if(bytesRead) {
+                    // Update index
+                    index+=bytesRead;
+                }
+                else {
+                    // Packet too big
+                    bDone = TRUE;
+                }
+                break;
+            default:
+                TPRINT(VERBOSITY_ERROR, L"Reading from named pipe failed with error %#.8x\n", error);
+                bDone = TRUE;
+                break;
+            }
+            bResult = FALSE;
         }
     }
-    // Sanity check received data
-    if(bytesRead>=4) {
-        *iocode = *(PDWORD)input;
-        *output = new vector<UCHAR>(&input[4], input+bytesRead);
-        bResult = TRUE;
-    }
+    LeaveCriticalSection(&lock);
     return bResult;
 }
