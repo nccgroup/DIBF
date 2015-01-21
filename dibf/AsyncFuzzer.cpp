@@ -158,15 +158,17 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
 {
     UINT status;
     BOOL bResult, canceled;
-    DWORD nbOfBytes, error;
+    DWORD threadID, nbOfBytes, error;
     ULONG_PTR specialPacket;
     LPOVERLAPPED pOvrlp;
     IoRequest *request;
 
+    // Get current TID
+    threadID = GetCurrentThreadId();
     // Get asyncfuzzer
     AsyncFuzzer *asyncfuzzer = (AsyncFuzzer*)param;
     // Initialize thread's PRNG
-    mt19937 prng(UNLFOLD_LOW_WORD(GetCurrentThreadId())^GetTickCount());
+    mt19937 prng(UNLFOLD_LOW_WORD(threadID)^GetTickCount());
     do {
         // Dequeue I/O packet
         bResult = GetQueuedCompletionStatus(asyncfuzzer->hIocp, &nbOfBytes, &specialPacket, &pOvrlp, INFINITE);
@@ -176,13 +178,13 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
             if(specialPacket) {
                 switch((DWORD)pOvrlp) {
                 case SPECIAL_OVERLAPPED_START:
-                    TPRINT(VERBOSITY_INFO, L"TID[%.5u]: Control passed to worker threads\n", GetCurrentThreadId());
+                    TPRINT(VERBOSITY_INFO, L"TID[%.5u]: Control passed to worker threads\n", threadID);
                     break;
                 case SPECIAL_OVERLAPPED_DONE:
-                    TPRINT(VERBOSITY_INFO, L"TID[%.5u]: Received status complete notice - exiting\n", GetCurrentThreadId());
+                    TPRINT(VERBOSITY_INFO, L"TID[%.5u]: Received status complete notice - exiting\n", threadID);
                     break;
                 default:
-                    TPRINT(VERBOSITY_ERROR, L"TID[%.5u]: Received unexpected special OVERLAPPED\n", GetCurrentThreadId());
+                    TPRINT(VERBOSITY_ERROR, L"TID[%.5u]: Received unexpected special OVERLAPPED\n", threadID);
                     break;
                 }
             }
@@ -196,7 +198,7 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
         else {
             // This should NEVER happen
             if(!pOvrlp) {
-                TPRINT(VERBOSITY_ERROR, L"TID[%.5u]: Timeout/internal error waiting for I/O completion\n", GetCurrentThreadId());
+                TPRINT(VERBOSITY_ERROR, L"TID[%.5u]: Timeout/internal error waiting for I/O completion\n", threadID);
                 continue; // get out
             }
             else {
@@ -212,26 +214,26 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
             if(!bResult) {
                 error = GetLastError();
                 if(error == ERROR_OPERATION_ABORTED) {
-                    TPRINT(VERBOSITY_ALL, L"TID[%.5u]: Async request %#.8x (iocode %#.8x) canceled successfully\n", GetCurrentThreadId(), request, request->GetIoCode());
+                    TPRINT(VERBOSITY_ALL, L"TID[%.5u]: Async request %#.8x (iocode %#.8x) canceled successfully\n", threadID, request, request->GetIoCode());
                     InterlockedIncrement(&Fuzzer::tracker.stats.CanceledRequests);
                 }
                 else {
                     InterlockedIncrement(&Fuzzer::tracker.stats.FailedRequests);
-                    TPRINT(VERBOSITY_ALL, L"TID[%.5u]: Async request %#.8x (iocode %#.8x) completed with error %#.8x\n", GetCurrentThreadId(), request, request->GetIoCode(), GetLastError());
+                    TPRINT(VERBOSITY_ALL, L"TID[%.5u]: Async request %#.8x (iocode %#.8x) completed with error %#.8x\n", threadID, request, request->GetIoCode(), GetLastError());
                 }
             }
             else {
                 InterlockedIncrement(&Fuzzer::tracker.stats.SuccessfulRequests);
-                TPRINT(VERBOSITY_ALL, L"TID[%.5u]: Async request %#.8x (iocode %#.8x) completed successfully\n", GetCurrentThreadId(), request, request->GetIoCode());
+                TPRINT(VERBOSITY_ALL, L"TID[%.5u]: Async request %#.8x (iocode %#.8x) completed successfully\n", threadID, request, request->GetIoCode());
             }
             InterlockedDecrement(&Fuzzer::tracker.stats.PendingRequests);
             // All pending request are cleaned up, exit
             if(asyncfuzzer->state==STATE_CLEANUP) {
-                TPRINT(VERBOSITY_ALL, L"TID[%.5u]: Freing request %#.8x (%u currently allocated requests)\n", GetCurrentThreadId(), request, Fuzzer::tracker.stats.AllocatedRequests);
+                TPRINT(VERBOSITY_ALL, L"TID[%.5u]: Freing request %#.8x (%u currently allocated requests)\n", threadID, request, Fuzzer::tracker.stats.AllocatedRequests);
                 delete request;
                 InterlockedDecrement(&Fuzzer::tracker.stats.AllocatedRequests);
                 if(Fuzzer::tracker.stats.AllocatedRequests==0) {
-                    TPRINT(VERBOSITY_INFO, L"TID[%.5u]: Last request was processed - exiting\n", GetCurrentThreadId());
+                    TPRINT(VERBOSITY_INFO, L"TID[%.5u]: Last request was processed - exiting\n", threadID);
                     asyncfuzzer->state=STATE_DONE;
                     for(UINT i=0; i<asyncfuzzer->startingNbThreads-1; i++) {
                         // Unblock other threads
@@ -245,12 +247,12 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
             if(!request) {
                 // Loose request allocation limit
                 if(asyncfuzzer->AllowNewAllocation()) {
-                    TPRINT(VERBOSITY_ALL, L"TID[%.5u]: Allocating new request in addition to the %u existing ones (%u pending)\n", GetCurrentThreadId(), Fuzzer::tracker.stats.AllocatedRequests, Fuzzer::tracker.stats.PendingRequests);
+                    TPRINT(VERBOSITY_ALL, L"TID[%.5u]: Allocating new request in addition to the %u existing ones (%u pending)\n", threadID, Fuzzer::tracker.stats.AllocatedRequests, Fuzzer::tracker.stats.PendingRequests);
                     request = new IoRequest(asyncfuzzer->hDev); // Create new request
                     InterlockedIncrement(&Fuzzer::tracker.stats.AllocatedRequests);
                 }
                 else {
-                    //TPRINT(VERBOSITY_ALL, L"TID[%u]: ENOUGH REQUESTS ALLOCATED (%d) FOR THE CURRENTLY PENDING NUMBER REQUESTS OF %d\n", GetCurrentThreadId(), Fuzzer::tracker.stats.AllocatedRequests, Fuzzer::tracker.stats.PendingRequests);
+                    //TPRINT(VERBOSITY_ALL, L"TID[%u]: ENOUGH REQUESTS ALLOCATED (%d) FOR THE CURRENTLY PENDING NUMBER REQUESTS OF %d\n", threadID, Fuzzer::tracker.stats.AllocatedRequests, Fuzzer::tracker.stats.PendingRequests);
                     break;
                 }
             }
@@ -259,7 +261,7 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
                 request->reset();
             }
             if(!request) {
-                TPRINT(VERBOSITY_ERROR, L"TID[%.5u]: Failed to allocate new request (keep going with existing %u request allocations)\n", GetCurrentThreadId(), Fuzzer::tracker.stats.AllocatedRequests);
+                TPRINT(VERBOSITY_ERROR, L"TID[%.5u]: Failed to allocate new request (keep going with existing %u request allocations)\n", threadID, Fuzzer::tracker.stats.AllocatedRequests);
                 break;
             }
             // Craft a fuzzed request
@@ -268,7 +270,7 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
             if(bResult) {
                 // Fire IOCTL
                 status = request->sendAsync();
-                TPRINT(VERBOSITY_ALL, L"TID[%.5u]: Sent request %#.8x (iocode %#.8x)\n", GetCurrentThreadId(), request, request->GetIoCode());
+                TPRINT(VERBOSITY_ALL, L"TID[%.5u]: Sent request %#.8x (iocode %#.8x)\n", threadID, request, request->GetIoCode());
                 InterlockedIncrement(&Fuzzer::tracker.stats.SentRequests);
                 // Handle pending IOs
                 if(status==DIBF_PENDING) {
@@ -277,10 +279,10 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
                     if((ULONG)(rand()%100)<asyncfuzzer->cancelRate) {
                         canceled = CancelIoEx(asyncfuzzer->hDev, &request->overlp);
                         if(canceled) {
-                            TPRINT(VERBOSITY_ALL, L"TID[%.5u]: Sent a cancel for request %#.8x (iocode %#.8x)\n", GetCurrentThreadId(), request, request->GetIoCode());
+                            TPRINT(VERBOSITY_ALL, L"TID[%.5u]: Sent a cancel for request %#.8x (iocode %#.8x)\n", threadID, request, request->GetIoCode());
                         }
                         else {
-                            TPRINT(VERBOSITY_ALL, L"TID[%.5u]: Failed to attempt cancelation of request %#.8x (iocode %#.8x), error %#.8x\n", GetCurrentThreadId(), request, request->GetIoCode(), GetLastError());
+                            TPRINT(VERBOSITY_ALL, L"TID[%.5u]: Failed to attempt cancelation of request %#.8x (iocode %#.8x), error %#.8x\n", threadID, request, request->GetIoCode(), GetLastError());
                         }
                     }
                     // Whether cancellation was sent or not, the request is pending
@@ -294,16 +296,16 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
                     InterlockedIncrement(&Fuzzer::tracker.stats.SynchronousRequests);
                     if(status==DIBF_SUCCESS){
                         InterlockedIncrement(&Fuzzer::tracker.stats.SuccessfulRequests);
-                        TPRINT(VERBOSITY_ALL, L"TID[%.5u]: Request %#.8x (iocode %#.8x) synchronously completed successfully\n", GetCurrentThreadId(), request, request->GetIoCode());
+                        TPRINT(VERBOSITY_ALL, L"TID[%.5u]: Request %#.8x (iocode %#.8x) synchronously completed successfully\n", threadID, request, request->GetIoCode());
                     }
                     else {
                         InterlockedIncrement(&Fuzzer::tracker.stats.FailedRequests);
-                        TPRINT(VERBOSITY_ALL, L"TID[%.5u]: Request %#.8x (iocode %#.8x) synchronously completed with error %#.8x\n", GetCurrentThreadId(), request, request->GetIoCode(), GetLastError());
+                        TPRINT(VERBOSITY_ALL, L"TID[%.5u]: Request %#.8x (iocode %#.8x) synchronously completed with error %#.8x\n", threadID, request, request->GetIoCode(), GetLastError());
                     }
                 }
             }
             else {
-                TPRINT(VERBOSITY_ERROR, L"TID[%.5u]: Failed to craft fuzzed request\n");
+                TPRINT(VERBOSITY_ERROR, L"TID[%.5u]: Failed to craft fuzzed request\n", threadID);
             }
         } // while firing ioctl
     } while(asyncfuzzer->state!=STATE_DONE);
