@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Peach xmlns="http://peachfuzzer.com/2012/Peach" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://peachfuzzer.com/2012/Peach ../peach.xsd">
+
+    <!-- DataModel containing a single string -->
+    <DataModel name="TheDataModel">
+        <String value="Hello World!" />
+        <Number name="IOCTL0" value="EFBEADDE" valueType="hex" size="32" mutable="false" />
+    </DataModel>
+    
+    <!-- StateModel referencing data model above -->
+    <StateModel name="DibfState" initialState="DibfState0">
+        <State name="DibfState0">
+            <Action type="output">
+                <DataModel ref="TheDataModel"/>
+            </Action>
+        </State>
+    </StateModel>
+
+    <!-- The test with pipe publisher -->
+    <Test name="Default">
+        <StateModel ref="DibfState"/>
+        <Publisher class="NamedPipe">
+            <Param name="host" value="." />
+            <Param name="pipeName" value="dibf_pipe" />
+            <Param name="impersonationLevel" value="1" />
+        </Publisher>
+    </Test>
+</Peach>
+<!-- end -->
