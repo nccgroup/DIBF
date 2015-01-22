@@ -46,6 +46,7 @@ private:
     HANDLE dibf_pipe;
     HANDLE inputThread;
     CRITICAL_SECTION lock;
+    BOOL bExit;
     static DWORD WINAPI FuzzInputProc(PVOID);
     queue<vector<UCHAR>*> iopackets; // TODO: swap this for a lockless ringbuffer
 };

@@ -132,7 +132,7 @@ BOOL SlidingDwordFuzzer::GetRandomIoctlAndBuffer(PDWORD iocode, vector<UCHAR> **
     return bResult;
 }
 
-NamedPipeInputFuzzer::NamedPipeInputFuzzer()
+NamedPipeInputFuzzer::NamedPipeInputFuzzer() : bExit(FALSE)
 {
     canGoCold =TRUE;
     TPRINT(VERBOSITY_DEBUG, L"NamedPipeInputFuzzer constructor\n");
@@ -170,7 +170,16 @@ BOOL NamedPipeInputFuzzer::Init()
 
 NamedPipeInputFuzzer::~NamedPipeInputFuzzer()
 {
+    DWORD waitResult;
+
     TPRINT(VERBOSITY_DEBUG, L"NamedPipeInputFuzzer destructor\n");
+    bExit = TRUE;
+
+    // Wait 2 seconds then kill the input thread
+    waitResult = WaitForSingleObject(inputThread, 2000);
+    if(waitResult!=WAIT_OBJECT_0) {
+        TerminateThread(inputThread, 0);
+    }
     DeleteCriticalSection(&lock);
     if(dibf_pipe!=INVALID_HANDLE_VALUE) {
         CloseHandle(dibf_pipe);
@@ -181,7 +190,7 @@ NamedPipeInputFuzzer::~NamedPipeInputFuzzer()
 
 DWORD WINAPI NamedPipeInputFuzzer::FuzzInputProc(PVOID param)
 {
-    BOOL bDone, bExit=FALSE, bResult=FALSE;
+    BOOL bDone, bResult=FALSE;
     UCHAR input[MAX_BUFSIZE+4];
     UINT index;
     DWORD bytesRead, error;
@@ -189,7 +198,7 @@ DWORD WINAPI NamedPipeInputFuzzer::FuzzInputProc(PVOID param)
     NamedPipeInputFuzzer *npif = (NamedPipeInputFuzzer*)param;
 
     // Double while is not as bad as it looks
-    while(!bExit) {
+    while(!npif->bExit) {
         index = 0;
         bDone = FALSE;
         while(!bDone) {
@@ -215,7 +224,7 @@ DWORD WINAPI NamedPipeInputFuzzer::FuzzInputProc(PVOID param)
                 case ERROR_BROKEN_PIPE:
                     TPRINT(VERBOSITY_ERROR, L"Named pipe client disconnected\n");
                     bDone = TRUE;
-                    bExit = TRUE;
+                    npif->bExit = TRUE;
                     break;
                 case ERROR_MORE_DATA:
                     if(bytesRead) {

@@ -151,5 +151,3 @@ VOID Fuzzer::Tracker::Stats::print()
     TPRINT(VERBOSITY_DEFAULT, L"---------------------------------------\n\n");
     return;
 }
-
-
