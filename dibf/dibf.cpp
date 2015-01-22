@@ -13,7 +13,7 @@
 #include "AsyncFuzzer.h"
 #include "SyncFuzzer.h"
 
-Dibf::Dibf() : hDevice(INVALID_HANDLE_VALUE)
+Dibf::Dibf()
 {
     TPRINT(VERBOSITY_DEBUG, L"Dibf constructor\n");
     return;
@@ -22,9 +22,6 @@ Dibf::Dibf() : hDevice(INVALID_HANDLE_VALUE)
 Dibf::~Dibf()
 {
     TPRINT(VERBOSITY_DEBUG, L"Dibf destructor\n");
-    if(hDevice!=INVALID_HANDLE_VALUE) {
-        CloseHandle(hDevice);
-    }
     return;
 }
 
@@ -61,16 +58,16 @@ BOOL Dibf::DoAllBruteForce(PTSTR pDeviceName, DWORD dwIOCTLStart, DWORD dwIOCTLE
 {
     BOOL bResult=FALSE;
 
-    hDevice = CreateFile(pDeviceName, MAXIMUM_ALLOWED, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+    HANDLE hDevice = CreateFile(pDeviceName, MAXIMUM_ALLOWED, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
     if(hDevice!=INVALID_HANDLE_VALUE) {
         //Bruteforce IOCTLs
         TPRINT(VERBOSITY_DEFAULT, L"<<<< GUESSING IOCTLS %s>>>>\n", deep?L"(DEEP MODE)":L"");
         TPRINT(VERBOSITY_INFO, L"Bruteforcing ioctl codes\n");
-        bResult = BruteForceIOCTLs(dwIOCTLStart, dwIOCTLEnd, deep);
+        bResult = BruteForceIOCTLs(hDevice, dwIOCTLStart, dwIOCTLEnd, deep);
         if(bResult) {
             TPRINT(VERBOSITY_DEFAULT, L"---------------------------------------\n\n");
             TPRINT(VERBOSITY_INFO, L"Bruteforcing buffer sizes\n");
-            bResult = BruteForceBufferSizes();
+            bResult = BruteForceBufferSizes(hDevice);
             if(bResult) {
                 TPRINT(VERBOSITY_DEFAULT, L"---------------------------------------\n\n");
                 WriteBruteforceResult(pDeviceName, &IOCTLStorage);
@@ -80,6 +77,7 @@ BOOL Dibf::DoAllBruteForce(PTSTR pDeviceName, DWORD dwIOCTLStart, DWORD dwIOCTLE
             TPRINT(VERBOSITY_ERROR, L"Unable to find any valid IOCTLs, exiting...\n");
             hDevice = INVALID_HANDLE_VALUE;
         }
+        CloseHandle(hDevice);
     }
     else {
         TPRINT(VERBOSITY_ERROR, L"Unable to open device %s, error %#.8x\n", pDeviceName, GetLastError());
@@ -89,7 +87,7 @@ BOOL Dibf::DoAllBruteForce(PTSTR pDeviceName, DWORD dwIOCTLStart, DWORD dwIOCTLE
 
 BOOL Dibf::start(INT argc, _TCHAR* argv[])
 {
-    TCHAR pDeviceName[MAX_PATH] = {0};
+    HANDLE hDevice=INVALID_HANDLE_VALUE;
     BOOL bDeepBruteForce=FALSE, bIoctls=FALSE, validUsage=TRUE, bIgnoreFile=FALSE, gotDeviceName=FALSE;
     DWORD dwIOCTLStart=START_IOCTL_VALUE, dwIOCTLEnd=END_IOCTL_VALUE, dwFuzzStage=0xf;
     ULONG maxThreads=0, timeLimits[3]={INFINITE, INFINITE,INFINITE}, cancelRate=CANCEL_RATE, maxPending=MAX_PENDING;
@@ -231,14 +229,11 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
         }
         // At this point we need ioctl defs
         if(bIoctls) {
-            // We got them from file
-            if(hDevice==INVALID_HANDLE_VALUE) {
-                // Open the device based on the file name read from file
-                hDevice = CreateFile(pDeviceName, MAXIMUM_ALLOWED, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
-            }
-            if(hDevice!=INVALID_HANDLE_VALUE) {
+            // We got them from file, check that device is ok
+            if(INVALID_HANDLE_VALUE!=(hDevice = CreateFile(pDeviceName, MAXIMUM_ALLOWED, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL))) {
+                CloseHandle(hDevice);
                 // Got a valid handle and valid IOCTLS to fuzz, onto actual fuzzing
-                FuzzIOCTLs(hDevice, &IOCTLStorage, dwFuzzStage, maxThreads, timeLimits, maxPending, cancelRate);
+                FuzzIOCTLs(dwFuzzStage, maxThreads, timeLimits, maxPending, cancelRate);
             }
             else {
                 TPRINT(VERBOSITY_ERROR, L"Error opening device %s, error %d\n", pDeviceName, GetLastError());
@@ -262,7 +257,7 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
 //
 //OUTPUT:
 // FALSE if no ioctl was found, TRUE otherwise
-BOOL Dibf::BruteForceIOCTLs(DWORD dwIOCTLStart, DWORD dwIOCTLEnd, BOOL bDeepBruteForce)
+BOOL Dibf::BruteForceIOCTLs(HANDLE hDevice, DWORD dwIOCTLStart, DWORD dwIOCTLEnd, BOOL bDeepBruteForce)
 {
     DWORD dwIOCTL, dwIOCTLIndex=0;
     IoRequest ioRequest(hDevice);  // This unique request gets reused iteratively
@@ -300,7 +295,7 @@ BOOL Dibf::BruteForceIOCTLs(DWORD dwIOCTLStart, DWORD dwIOCTLEnd, BOOL bDeepBrut
 //OUTPUT:
 // None.
 //
-BOOL Dibf::BruteForceBufferSizes()
+BOOL Dibf::BruteForceBufferSizes(HANDLE hDevice)
 {
     BOOL bResult=TRUE;
     DWORD dwCurrentSize;
@@ -481,8 +476,6 @@ BOOL Dibf::ReadBruteforceResult(TCHAR *clDeviceName, BOOL *pGotDeviceName, Ioctl
 // to the individual fuzzer stages.
 //
 //INPUT:
-// hDevice - Handle to device object.
-// pIOCTLStorage - Pointer to array of IOCTL_STORAGE structures.
 // dwFuzzStage - DWORD indicating which stages to run.
 // dwIOCTLCount - the number of IOCTLs in pIOCTLStorage
 // maxThreads - the number of threads to create for the async fuzzer
@@ -493,13 +486,16 @@ BOOL Dibf::ReadBruteforceResult(TCHAR *clDeviceName, BOOL *pGotDeviceName, Ioctl
 //OUTPUT:
 // None.
 //
-VOID Dibf::FuzzIOCTLs(HANDLE hDevice, IoctlStorage *pIOCTLStorage, DWORD dwFuzzStage, ULONG maxThreads, PULONG timeLimits, ULONG maxPending, ULONG cancelRate)
+VOID Dibf::FuzzIOCTLs(DWORD dwFuzzStage, ULONG maxThreads, PULONG timeLimits, ULONG maxPending, ULONG cancelRate)
 {
+    HANDLE hDev=INVALID_HANDLE_VALUE;
+
+    hDev = CreateFile(pDeviceName, MAXIMUM_ALLOWED, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
     // If enabled by command line, run sliding DWORD fuzzer
-    if(timeLimits[0]&&(dwFuzzStage & DWORD_FUZZER) == DWORD_FUZZER) {
+    if(hDev!=INVALID_HANDLE_VALUE&&timeLimits[0]&&(dwFuzzStage & DWORD_FUZZER) == DWORD_FUZZER) {
         TPRINT(VERBOSITY_DEFAULT, L"<<<< RUNNING SLIDING DWORD FUZZER >>>>\n");
         Fuzzer::printDateTime(FALSE);
-        SyncFuzzer *syncf = new SyncFuzzer(hDevice, timeLimits[0], new SlidingDwordFuzzer(pIOCTLStorage));
+        SyncFuzzer *syncf = new SyncFuzzer(hDev, timeLimits[0], new SlidingDwordFuzzer(&IOCTLStorage));
         if(syncf->init()) {
             syncf->start();
         }
@@ -508,12 +504,15 @@ VOID Dibf::FuzzIOCTLs(HANDLE hDevice, IoctlStorage *pIOCTLStorage, DWORD dwFuzzS
         }
         Fuzzer::tracker.stats.print();
         delete syncf;
+        CloseHandle(hDev);
     }
+
+    hDev = CreateFile(pDeviceName, MAXIMUM_ALLOWED, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
     // If enabled by command line, run pure random fuzzer
-    if(timeLimits[1]&&(dwFuzzStage & RANDOM_FUZZER)==RANDOM_FUZZER) {
+    if(hDev!=INVALID_HANDLE_VALUE&&timeLimits[1]&&(dwFuzzStage & RANDOM_FUZZER)==RANDOM_FUZZER) {
         TPRINT(VERBOSITY_DEFAULT, L"<<<< RUNNING RANDOM FUZZER >>>>\n");
         Fuzzer::printDateTime(FALSE);
-        AsyncFuzzer *asyncf = new AsyncFuzzer(hDevice, timeLimits[1], maxPending, cancelRate, new Dumbfuzzer(pIOCTLStorage));
+        AsyncFuzzer *asyncf = new AsyncFuzzer(hDev, timeLimits[1], maxPending, cancelRate, new Dumbfuzzer(&IOCTLStorage));
         if(asyncf->init(maxThreads)) {
             asyncf->start();
         }
@@ -522,15 +521,18 @@ VOID Dibf::FuzzIOCTLs(HANDLE hDevice, IoctlStorage *pIOCTLStorage, DWORD dwFuzzS
         }
         Fuzzer::tracker.stats.print();
         delete asyncf;
+        CloseHandle(hDev);
     }
+
+    hDev = CreateFile(pDeviceName, MAXIMUM_ALLOWED, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
     // If enabled by command line, run custom fuzzer (taking input from named pipe)
-    if(timeLimits[2]&&(dwFuzzStage & NP_FUZZER) == NP_FUZZER) {
+    if(hDev!=INVALID_HANDLE_VALUE&&timeLimits[2]&&(dwFuzzStage & NP_FUZZER) == NP_FUZZER) {
         TPRINT(VERBOSITY_DEFAULT, L"<<<< RUNNING CUSTOM FUZZER >>>>\n");
         Fuzzer::printDateTime(FALSE);
         AsyncFuzzer *customFuzzer=NULL;
         NamedPipeInputFuzzer *pipef = new NamedPipeInputFuzzer();
         if(pipef->Init()) {
-            customFuzzer = new AsyncFuzzer(hDevice, timeLimits[2], maxPending, cancelRate, pipef);
+            customFuzzer = new AsyncFuzzer(hDev, timeLimits[2], maxPending, cancelRate, pipef);
             if(customFuzzer->init(maxThreads)) {
                 customFuzzer->start();
             }
@@ -543,6 +545,7 @@ VOID Dibf::FuzzIOCTLs(HANDLE hDevice, IoctlStorage *pIOCTLStorage, DWORD dwFuzzS
             TPRINT(VERBOSITY_ERROR, L"Failed to initialize named pipe fuzzing provider. Aborting run.\n");
         }
         Fuzzer::tracker.stats.print();
+        CloseHandle(hDev);
     } // if async fuzzer
     return;
 }
