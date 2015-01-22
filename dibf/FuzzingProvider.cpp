@@ -153,9 +153,9 @@ BOOL NamedPipeInputFuzzer::Init()
                                 0,
                                 NULL);
     if(dibf_pipe!=INVALID_HANDLE_VALUE) {
-        TPRINT(VERBOSITY_INFO, L"Named pipe created, waiting for connection...\n");
+        TPRINT(VERBOSITY_DEFAULT, L"Named pipe created, waiting for connection...\n");
         if(ConnectNamedPipe(dibf_pipe, NULL)?TRUE:(GetLastError()==ERROR_PIPE_CONNECTED)) {
-            TPRINT(VERBOSITY_INFO, L"Fuzzing client connected to named pipe\n");
+            TPRINT(VERBOSITY_DEFAULT, L"Fuzzing client connected to named pipe\n");
             inputThread = CreateThread(NULL, 0, FuzzInputProc, this, 0, NULL);
             if(inputThread) {
                 bResult = TRUE;
