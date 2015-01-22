@@ -232,7 +232,7 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
 {
     UINT status;
     BOOL bResult, canceled, gotAPacket;
-    DWORD threadID, nbOfBytes, error;
+    DWORD threadID;
     IoRequest *request;
 
     // Get current TID

@@ -5,6 +5,8 @@
 
 #pragma once
 
+#pragma warning(disable:4710) // disable informational warning. Leaving inlining up to compiler
+
 // Windows
 #include "targetver.h"
 #include <stdio.h>
