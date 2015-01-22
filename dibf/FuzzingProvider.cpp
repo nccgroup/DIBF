@@ -7,8 +7,9 @@
 CONST DWORD SlidingDwordFuzzer::DWORDArray[] = {0x0fffffff, 0x10000000, 0x1fffffff, 0x20000000, 0x3fffffff, 0x40000000, 0x7fffffff, 0x80000000, 0xffffffff};
 
 // Empty constructor and destructor
-FuzzingProvider::FuzzingProvider()
+FuzzingProvider::FuzzingProvider() : canGoCold(FALSE)
 {
+    hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
     TPRINT(VERBOSITY_DEBUG, L"FuzzingProvider constructor\n");
     return;
 }
@@ -133,6 +134,7 @@ BOOL SlidingDwordFuzzer::GetRandomIoctlAndBuffer(PDWORD iocode, vector<UCHAR> **
 
 NamedPipeInputFuzzer::NamedPipeInputFuzzer()
 {
+    canGoCold =TRUE;
     TPRINT(VERBOSITY_DEBUG, L"NamedPipeInputFuzzer constructor\n");
     InitializeCriticalSection(&lock);
     return;
@@ -146,15 +148,21 @@ BOOL NamedPipeInputFuzzer::Init()
                                 PIPE_ACCESS_INBOUND,
                                 PIPE_TYPE_MESSAGE|PIPE_READMODE_MESSAGE|PIPE_WAIT|PIPE_REJECT_REMOTE_CLIENTS,
                                 1,
-                                512,
-                                512,
+                                MAX_BUFSIZE/2,
+                                MAX_BUFSIZE/2,
                                 0,
                                 NULL);
     if(dibf_pipe!=INVALID_HANDLE_VALUE) {
         TPRINT(VERBOSITY_INFO, L"Named pipe created, waiting for connection...\n");
         if(ConnectNamedPipe(dibf_pipe, NULL)?TRUE:(GetLastError()==ERROR_PIPE_CONNECTED)) {
             TPRINT(VERBOSITY_INFO, L"Fuzzing client connected to named pipe\n");
-            bResult = TRUE;
+            inputThread = CreateThread(NULL, 0, FuzzInputProc, this, 0, NULL);
+            if(inputThread) {
+                bResult = TRUE;
+            }
+            else {
+                TPRINT(VERBOSITY_ERROR, L"Failed to create fuzz input thread with error %#.8x\n", GetLastError());
+            }
         }
     }
     return bResult;
@@ -167,61 +175,89 @@ NamedPipeInputFuzzer::~NamedPipeInputFuzzer()
     if(dibf_pipe!=INVALID_HANDLE_VALUE) {
         CloseHandle(dibf_pipe);
     }
+    CloseHandle(inputThread);
     return;
+}
+
+DWORD WINAPI NamedPipeInputFuzzer::FuzzInputProc(PVOID param)
+{
+    BOOL bDone, bExit=FALSE, bResult=FALSE;
+    UCHAR input[MAX_BUFSIZE+4];
+    UINT index;
+    DWORD bytesRead, error;
+    vector<UCHAR> *packet;
+    NamedPipeInputFuzzer *npif = (NamedPipeInputFuzzer*)param;
+
+    // Double while is not as bad as it looks
+    while(!bExit) {
+        index = 0;
+        bDone = FALSE;
+        while(!bDone) {
+            bResult = ReadFile(npif->dibf_pipe, &input[index], (MAX_BUFSIZE+4)-index, &bytesRead, NULL);
+            // Check for data reception
+            if (bResult&&bytesRead) {
+                // Update index
+                index+=bytesRead;
+                // Sanity check received data
+                if(index>=4) {
+                    // Create new packet
+                    packet = new vector<UCHAR>(input, &input[index]);
+                    // Enqueue new packet
+                    EnterCriticalSection(&npif->lock);
+                    npif->iopackets.push(packet);
+                    LeaveCriticalSection(&npif->lock);
+                }
+                bDone = TRUE;
+            }
+            else {
+                error = GetLastError();
+                switch(error) {
+                case ERROR_BROKEN_PIPE:
+                    TPRINT(VERBOSITY_ERROR, L"Named pipe client disconnected\n");
+                    bDone = TRUE;
+                    bExit = TRUE;
+                    break;
+                case ERROR_MORE_DATA:
+                    if(bytesRead) {
+                        // Update index
+                        index+=bytesRead;
+                    }
+                    else {
+                        // Packet too big
+                        bDone = TRUE;
+                    }
+                    break;
+                default:
+                    TPRINT(VERBOSITY_ERROR, L"Reading from named pipe failed with error %#.8x\n", error);
+                    bDone = TRUE;
+                    break;
+                }
+            }
+        }
+    }
+    SetEvent(npif->hEvent);
+    return ERROR_SUCCESS;
 }
 
 BOOL NamedPipeInputFuzzer::GetRandomIoctlAndBuffer(PDWORD iocode, vector<UCHAR> **output, mt19937 *threadRandomProvider)
 {
-    BOOL bDone=FALSE, bResult=FALSE;
-    UCHAR input[MAX_BUFSIZE+4];
-    UINT index=0;
-    DWORD bytesRead=0, error;
+    BOOL bResult=FALSE;
+    vector<UCHAR> *packet=NULL;
 
     UNREFERENCED_PARAMETER(threadRandomProvider);
 
     EnterCriticalSection(&lock);
-    while(!bDone) {
-        bResult = ReadFile(dibf_pipe, &input[index], (MAX_BUFSIZE+4)-index, &bytesRead, NULL);
-        // Check for data reception
-        if (bResult&&bytesRead) {
-            // Update index
-            index+=bytesRead;
-            // Sanity check received data
-            if(index>=4) {
-                *iocode = *(PDWORD)input;
-                *output = new vector<UCHAR>(&input[4], &input[index]);
-                bResult = TRUE; // for clarity only
-            }
-            else {
-                bResult = FALSE;
-            }
-            bDone = TRUE;
-        }
-        else {
-            error = GetLastError();
-            switch(error) {
-            case ERROR_BROKEN_PIPE:
-                TPRINT(VERBOSITY_ERROR, L"Named pipe client disconnected\n");
-                bDone = TRUE;
-                break;
-            case ERROR_MORE_DATA:
-                if(bytesRead) {
-                    // Update index
-                    index+=bytesRead;
-                }
-                else {
-                    // Packet too big
-                    bDone = TRUE;
-                }
-                break;
-            default:
-                TPRINT(VERBOSITY_ERROR, L"Reading from named pipe failed with error %#.8x\n", error);
-                bDone = TRUE;
-                break;
-            }
-            bResult = FALSE;
-        }
+    if(!iopackets.empty()) {
+        packet = iopackets.front();
+        iopackets.pop();
+        bResult = TRUE;
     }
     LeaveCriticalSection(&lock);
+    if(bResult) {
+        // Parse io packet (last 4 bytes is ioctl code)
+        *iocode = *(PDWORD)&(packet->data()[packet->size()-sizeof(DWORD)]);
+        packet->resize(packet->size()-sizeof(DWORD));
+        *output = packet;
+    }
     return bResult;
 }

@@ -34,7 +34,7 @@
 // Fuzzing stages
 #define DWORD_FUZZER 1
 #define RANDOM_FUZZER 2
-#define PEACH_FUZZER 4
+#define NP_FUZZER 4
 // Async I/O statuses
 #define DIBF_SUCCESS ((DWORD)1)
 #define DIBF_PENDING ((DWORD)0)

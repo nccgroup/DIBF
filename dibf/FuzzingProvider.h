@@ -9,6 +9,8 @@ public:
     FuzzingProvider();
     virtual ~FuzzingProvider() = 0;
     virtual BOOL GetRandomIoctlAndBuffer(PDWORD, vector<UCHAR>**, mt19937*)=0;
+    HANDLE hEvent;
+    BOOL canGoCold;
 };
 
 class Dumbfuzzer : public FuzzingProvider
@@ -42,5 +44,8 @@ public:
     BOOL GetRandomIoctlAndBuffer(PDWORD, vector<UCHAR>**, mt19937*);
 private:
     HANDLE dibf_pipe;
+    HANDLE inputThread;
     CRITICAL_SECTION lock;
+    static DWORD WINAPI FuzzInputProc(PVOID);
+    queue<vector<UCHAR>*> iopackets; // TODO: swap this for a lockless ringbuffer
 };

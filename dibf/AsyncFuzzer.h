@@ -37,4 +37,5 @@ private:
     ULONG GetNumberOfProcs();
     BOOL CreateThreads();
     BOOL AllowNewAllocation();
+    BOOL DequeueIoPacket(IoRequest**);
 };

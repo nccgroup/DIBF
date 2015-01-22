@@ -47,6 +47,6 @@ protected:
     volatile DWORD state; // Current state
     // Functions
     BOOL InitializeFuzzersTermination();
-    BOOL WaitOnTerminationEvent(ULONG);
+    BOOL WaitOnTerminationEvents(ULONG);
     static BOOL __stdcall CtrlHandler(DWORD);
 };

@@ -69,7 +69,7 @@ BOOL SyncFuzzer::start()
     hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)FuzzProc, this, 0, NULL);
     if(hThread) {
         // Wait for ctrl-c or timout
-        bResult = WaitOnTerminationEvent(timeLimit);
+        bResult = WaitOnTerminationEvents(timeLimit);
         if(bResult) {
             state = STATE_DONE;
             waitResult = WaitForSingleObject(hThread, SYNC_CLEANUP_TIMEOUT);

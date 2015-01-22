@@ -38,12 +38,20 @@ BOOL __stdcall Fuzzer::CtrlHandler(DWORD fdwCtrlType)
     return bResult;
 }
 
-BOOL Fuzzer::WaitOnTerminationEvent(ULONG seconds)
+BOOL Fuzzer::WaitOnTerminationEvents(ULONG seconds)
 {
     BOOL bResult=FALSE;
 
-    if(WAIT_FAILED!=WaitForSingleObject(tracker.hEvent, seconds*1000)) {
-        bResult = TRUE;
+    if(fuzzingProvider->canGoCold) {
+        HANDLE events[2] = {tracker.hEvent, fuzzingProvider->hEvent};
+        if(WAIT_FAILED!=WaitForMultipleObjects(2, events, FALSE, seconds*1000)) {
+            bResult = TRUE;
+        }
+    }
+    else {
+        if(WAIT_FAILED!=WaitForSingleObject(tracker.hEvent, seconds*1000)) {
+            bResult = TRUE;
+        }
     }
     return bResult;
 }
