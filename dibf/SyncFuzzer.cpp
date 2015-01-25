@@ -3,14 +3,14 @@
 
 SyncFuzzer::SyncFuzzer(HANDLE hDevice, ULONG timeLimit, FuzzingProvider *provider) : Fuzzer(provider)
 {
-    TPRINT(VERBOSITY_DEBUG, L"AsyncFuzzer constructor\n");
+    TPRINT(VERBOSITY_DEBUG, _T("AsyncFuzzer constructor\n"));
     this->hDev = hDevice;
     this->timeLimit = timeLimit;
 }
 
 SyncFuzzer::~SyncFuzzer()
 {
-    TPRINT(VERBOSITY_DEBUG, L"AsyncFuzzer destructor\n");
+    TPRINT(VERBOSITY_DEBUG, _T("AsyncFuzzer destructor\n"));
     return;
 }
 
@@ -34,7 +34,7 @@ DWORD SyncFuzzer::FuzzProc(PVOID param)
         bResult = request.fuzz(syncFuzzer->fuzzingProvider, &prng);
         if(bResult) {
             bResult = request.sendSync();
-            TPRINT(VERBOSITY_ALL, L"TID[%.4u]: Sent request %#.8x (iocode %#.8x)\n", GetCurrentThreadId(), &request, request.GetIoCode());
+            TPRINT(VERBOSITY_ALL, _T("TID[%.4u]: Sent request %#.8x (iocode %#.8x)\n"), GetCurrentThreadId(), &request, request.GetIoCode());
             InterlockedIncrement(&tracker.stats.SynchronousRequests);
             InterlockedIncrement(&tracker.stats.SentRequests);
             InterlockedIncrement(&tracker.stats.CompletedRequests);
@@ -47,7 +47,7 @@ DWORD SyncFuzzer::FuzzProc(PVOID param)
                 nbConsecutiveFailures++;
             }
             if(nbConsecutiveFailures==MAX_CONSECUTIVE_FAILURES) {
-                TPRINT(VERBOSITY_DEFAULT, L" %u IOCTL failures in a row -- check config?\n", nbConsecutiveFailures);
+                TPRINT(VERBOSITY_DEFAULT, _T(" %u IOCTL failures in a row -- check config?\n"), nbConsecutiveFailures);
                 nbConsecutiveFailures = 0;
             }
         }
@@ -74,11 +74,11 @@ BOOL SyncFuzzer::start()
             state = STATE_DONE;
             waitResult = WaitForSingleObject(hThread, SYNC_CLEANUP_TIMEOUT);
             if(waitResult==WAIT_OBJECT_0) {
-                TPRINT(VERBOSITY_INFO, L"Fuzzer thread exited timely\n");
+                TPRINT(VERBOSITY_INFO, _T("Fuzzer thread exited timely\n"));
                 bResult = TRUE;
             }
             else {
-                TPRINT(VERBOSITY_ERROR, L"Fuzzer thread failed to exited timely\n");
+                TPRINT(VERBOSITY_ERROR, _T("Fuzzer thread failed to exited timely\n"));
             }
         }
     }

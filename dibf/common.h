@@ -30,7 +30,7 @@
 #define MAX_BUFSIZE 8192 // 8k
 // Ioctl info storage
 #define MAX_IOCTLS 512
-#define DIBF_BF_LOG_FILE L"dibf-bf-results.txt"
+#define DIBF_BF_LOG_FILE _T("dibf-bf-results.txt")
 // Fuzzing stages
 #define DWORD_FUZZER 1
 #define RANDOM_FUZZER 2
@@ -40,22 +40,48 @@
 #define DIBF_PENDING ((DWORD)0)
 #define DIBF_ERROR ((DWORD)-1)
 
-class IoctlStorage
+// Workaround for c++/TCHAR
+#ifdef UNICODE
+class tstring
 {
-public:
-    IoctlStorage();
-    ~IoctlStorage();
 private:
-    class IoctlDef
-    {
-    public:
-        DWORD dwIOCTL;
-        DWORD dwLowerSize;
-        DWORD dwUpperSize;
-    };
+    static wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+    string str;
+    wstring ws;
 public:
-    IoctlDef *ioctls;
-    ULONG count;
+    tstring() {} // default constructor
+    tstring(LPCTSTR s) : str(string(converter.to_bytes(s))) {}
+    bool empty() { return str.empty(); }
+    tstring &append(tstring other) { str.append(other.str); return *this; }
+    operator string() { return str; }
+    operator LPCTSTR() { ws=wstring(converter.from_bytes(str)); return ws.c_str(); }
+    bool operator==(const tstring &other) const { return (this->str==other.str); }
+    bool operator!=(const tstring &other) const { return (this->str!=other.str); }
+};
+#else
+class tstring
+{
+private:
+     string str;
+public:
+    tstring() {} // default constructor
+    tstring(LPCTSTR s) : str((LPCSTR)s) {}
+    bool empty() { return str.empty(); }
+    tstring &append(tstring other) { str.append(other.str); return *this; }
+    operator string() { return str; }
+    operator LPCTSTR() { return (LPCTSTR)str.c_str(); }
+    bool operator==(const tstring &other) const { return (this->str==other.str); }
+    bool operator!=(const tstring &other) const { return (this->str!=other.str); }
+};
+#endif
+
+// Ioctl definition storage
+struct IoctlDef
+{
+    IoctlDef() : dwIOCTL(0), dwLowerSize(0), dwUpperSize(0) {}
+    DWORD dwIOCTL;
+    DWORD dwLowerSize;
+    DWORD dwUpperSize;
 };
 
 // Globals

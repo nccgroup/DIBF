@@ -30,12 +30,11 @@ private:
     // Members
     HANDLE hDev;
     DWORD iocode;
-    vector<UCHAR> *inBuf;
+    vector<UCHAR> inBuf;
     vector<UCHAR> outBuf;
-    DWORD bytesreturned;
     // Functions
     BOOL allocBuffers(DWORD, DWORD);
     BOOL sendRequest(BOOL, PDWORD);
-    DWORD getInputBufferLength(){return inBuf->size()*sizeof(UCHAR);}
+    DWORD getInputBufferLength(){return inBuf.size()*sizeof(UCHAR);}
     DWORD getOutputBufferLength(){return outBuf.size()*sizeof(UCHAR);}
 };

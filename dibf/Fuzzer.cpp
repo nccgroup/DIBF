@@ -7,14 +7,14 @@ Fuzzer::Tracker Fuzzer::tracker;
 // Trivial constructor
 Fuzzer::Fuzzer(FuzzingProvider *p) : fuzzingProvider(p)
 {
-    TPRINT(VERBOSITY_DEBUG, L"Fuzzer constructor\n");
+    TPRINT(VERBOSITY_DEBUG, _T("Fuzzer constructor\n"));
     tracker.currentFuzzer = this;
     this->state=STATE_FUZZING;
 }
 
 // Simple destructor
 Fuzzer::~Fuzzer() {
-    TPRINT(VERBOSITY_DEBUG, L"Fuzzer destructor\n");
+    TPRINT(VERBOSITY_DEBUG, _T("Fuzzer destructor\n"));
     delete fuzzingProvider;
 }
 
@@ -72,11 +72,11 @@ Fuzzer::Tracker::Tracker()
     if(hEvent) {
         // Register ctrl-c handler
         if(!SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, TRUE)) {
-            TPRINT(VERBOSITY_INFO, L"Failed to register control handler, ctrl-c will not work as expected\n");
+            TPRINT(VERBOSITY_INFO, _T("Failed to register control handler, ctrl-c will not work as expected\n"));
         }
     }
     else {
-        TPRINT(VERBOSITY_ERROR, L"Failed to create event, error %x\n", GetLastError());
+        TPRINT(VERBOSITY_ERROR, _T("Failed to create event, error %x\n"), GetLastError());
     }
     return;
 }
@@ -84,7 +84,7 @@ Fuzzer::Tracker::Tracker()
 Fuzzer::Tracker::~Tracker()
 {
     if(!SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, FALSE)) {
-        TPRINT(VERBOSITY_INFO, L"Failed to unregister control handler\n");
+        TPRINT(VERBOSITY_INFO, _T("Failed to unregister control handler\n"));
     }
 }
 
@@ -101,14 +101,14 @@ VOID Fuzzer::printDateTime(BOOL ended)
 {
     TCHAR timestr[64];
     TCHAR datestr[64];
-    LPTSTR fmt = ended ? L"Run ended: %s %s\n" : L"Run started: %s %s\n";
+    LPTSTR fmt = ended ? _T("Run ended: %s %s\n") : _T("Run started: %s %s\n");
 
     // Print date & time
     if(GetDateFormat(LOCALE_USER_DEFAULT, 0, NULL, NULL, datestr, 32) && GetTimeFormat(LOCALE_USER_DEFAULT, TIME_NOSECONDS, NULL, NULL, timestr, 32)) {
         TPRINT(VERBOSITY_DEFAULT, fmt, datestr, timestr);
     }
     else {
-        TPRINT(VERBOSITY_DEFAULT, L"Time unavailable\n");
+        TPRINT(VERBOSITY_DEFAULT, _T("Time unavailable\n"));
     }
     return;
 }
@@ -128,26 +128,26 @@ VOID Fuzzer::Tracker::Stats::print()
     // clean print
     fflush(stdout);
     // Print summary
-    TPRINT(VERBOSITY_DEFAULT, L"---------------------------------------\n");
-    TPRINT(VERBOSITY_DEFAULT, L"Sent Requests : %d\n", SentRequests);
-    TPRINT(VERBOSITY_DEFAULT, L"Completed Requests : %d (%d sync, %d async)\n", CompletedRequests, SynchronousRequests, ASyncRequests);
-    TPRINT(VERBOSITY_DEFAULT, L"SuccessfulRequests : %d\n", SuccessfulRequests);
-    TPRINT(VERBOSITY_DEFAULT, L"FailedRequests : %d\n", FailedRequests);
-    TPRINT(VERBOSITY_DEFAULT, L"CanceledRequests : %d\n", CanceledRequests);
-    TPRINT(VERBOSITY_INFO, L"----\n");
-    TPRINT(VERBOSITY_INFO, L"Consistent Results: %s\n", SuccessfulRequests
+    TPRINT(VERBOSITY_DEFAULT, _T("---------------------------------------\n"));
+    TPRINT(VERBOSITY_DEFAULT, _T("Sent Requests : %d\n"), SentRequests);
+    TPRINT(VERBOSITY_DEFAULT, _T("Completed Requests : %d (%d sync, %d async)\n"), CompletedRequests, SynchronousRequests, ASyncRequests);
+    TPRINT(VERBOSITY_DEFAULT, _T("SuccessfulRequests : %d\n"), SuccessfulRequests);
+    TPRINT(VERBOSITY_DEFAULT, _T("FailedRequests : %d\n"), FailedRequests);
+    TPRINT(VERBOSITY_DEFAULT, _T("CanceledRequests : %d\n"), CanceledRequests);
+    TPRINT(VERBOSITY_INFO, _T("----\n"));
+    TPRINT(VERBOSITY_INFO, _T("Consistent Results: %s\n"), SuccessfulRequests
         +FailedRequests
         +CanceledRequests
-        == CompletedRequests ? L"Yes" : L"No (it's ok)");
+        == CompletedRequests ? _T("Yes" : _T("No (it's ok)")));
     // Cleanup completed
     if(!AllocatedRequests && !PendingRequests) {
-        TPRINT(VERBOSITY_ALL, L"Cleanup completed, no request still allocated nor pending\n");
+        TPRINT(VERBOSITY_ALL, _T("Cleanup completed, no request still allocated nor pending\n"));
     }
     else {
-        TPRINT(VERBOSITY_ALL, L"Cleanup incomplete, %u request%s still allocated, %u pending\n", AllocatedRequests, AllocatedRequests>1?L"s":L"", PendingRequests);
+        TPRINT(VERBOSITY_ALL, _T("Cleanup incomplete, %u request%s still allocated, %u pending\n"), AllocatedRequests, AllocatedRequests>1?_T("s"):_T(""), PendingRequests);
     }
-    TPRINT(VERBOSITY_ALL, L"----\n");
+    TPRINT(VERBOSITY_ALL, _T("----\n"));
     printDateTime(TRUE);
-    TPRINT(VERBOSITY_DEFAULT, L"---------------------------------------\n\n");
+    TPRINT(VERBOSITY_DEFAULT, _T("---------------------------------------\n\n"));
     return;
 }

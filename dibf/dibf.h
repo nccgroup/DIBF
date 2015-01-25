@@ -12,15 +12,16 @@ public:
     BOOL start(INT, _TCHAR**);
 private:
     // Vars
-    TCHAR pDeviceName[MAX_PATH];
-    IoctlStorage IOCTLStorage;
+    tstring deviceName;
+    BOOL gotDeviceName;
+    vector<IoctlDef> ioctls;
     // Functions
     BOOL readAndValidateCommandLineUlong(LPTSTR, ULONG, ULONG, PULONG, BOOL);
-    BOOL DoAllBruteForce(PTSTR, DWORD, DWORD, BOOL);
+    BOOL DoAllBruteForce(DWORD, DWORD, BOOL);
     BOOL BruteForceIOCTLs(HANDLE, DWORD, DWORD, BOOL);
     BOOL BruteForceBufferSizes(HANDLE);
-    BOOL ReadBruteforceResult(TCHAR*, BOOL*, IoctlStorage*);
-    BOOL WriteBruteforceResult(TCHAR*, IoctlStorage*);
+    BOOL ReadBruteforceResult();
+    BOOL WriteBruteforceResult();
     VOID FuzzIOCTLs(DWORD, ULONG, PULONG, ULONG, ULONG);
     VOID usage(void);
 };

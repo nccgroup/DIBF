@@ -8,7 +8,7 @@ class FuzzingProvider
 public:
     FuzzingProvider();
     virtual ~FuzzingProvider() = 0;
-    virtual BOOL GetRandomIoctlAndBuffer(PDWORD, vector<UCHAR>**, mt19937*)=0;
+    virtual BOOL GetRandomIoctlAndBuffer(DWORD&, vector<UCHAR>&, mt19937*)=0;
     HANDLE hEvent;
     BOOL canGoCold;
 };
@@ -16,21 +16,23 @@ public:
 class Dumbfuzzer : public FuzzingProvider
 {
 public:
-    Dumbfuzzer(IoctlStorage*);
+    Dumbfuzzer(const vector<IoctlDef>&);
     ~Dumbfuzzer();
-    BOOL GetRandomIoctlAndBuffer(PDWORD, vector<UCHAR>**, mt19937*);
+    BOOL GetRandomIoctlAndBuffer(DWORD&, vector<UCHAR>&, mt19937*);
+    Dumbfuzzer & operator=( const Dumbfuzzer & ) { return *this; }
 private:
-    IoctlStorage* ioStore;
+    const vector<IoctlDef> ioStore;
 };
 
 class SlidingDwordFuzzer : public FuzzingProvider
 {
 public:
-    SlidingDwordFuzzer(IoctlStorage*);
+    SlidingDwordFuzzer(const vector<IoctlDef>&);
     ~SlidingDwordFuzzer();
-    BOOL GetRandomIoctlAndBuffer(PDWORD, vector<UCHAR>**, mt19937*);
+    BOOL GetRandomIoctlAndBuffer(DWORD&, vector<UCHAR>&, mt19937*);
+    SlidingDwordFuzzer & operator=( const SlidingDwordFuzzer & ) { return *this; }
 private:
-    IoctlStorage* ioStore;
+    const vector<IoctlDef> ioStore;
     static CONST DWORD DWORDArray[];
     volatile UINT ioctlIndex, iteration, position;
 };
@@ -41,7 +43,7 @@ public:
     NamedPipeInputFuzzer();
     ~NamedPipeInputFuzzer();
     BOOL Init();
-    BOOL GetRandomIoctlAndBuffer(PDWORD, vector<UCHAR>**, mt19937*);
+    BOOL GetRandomIoctlAndBuffer(DWORD&, vector<UCHAR>&, mt19937*);
 private:
     HANDLE dibf_pipe;
     HANDLE inputThread;

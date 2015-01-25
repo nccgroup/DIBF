@@ -10,86 +10,85 @@ CONST DWORD SlidingDwordFuzzer::DWORDArray[] = {0x0fffffff, 0x10000000, 0x1fffff
 FuzzingProvider::FuzzingProvider() : canGoCold(FALSE)
 {
     hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-    TPRINT(VERBOSITY_DEBUG, L"FuzzingProvider constructor\n");
+    TPRINT(VERBOSITY_DEBUG, _T("FuzzingProvider constructor\n"));
     return;
 }
 FuzzingProvider::~FuzzingProvider()
 {
-    TPRINT(VERBOSITY_DEBUG, L"FuzzingProvider destructor\n");
+    TPRINT(VERBOSITY_DEBUG, _T("FuzzingProvider destructor\n"));
     return;
 }
 
-Dumbfuzzer::Dumbfuzzer(IoctlStorage* ioctlStorage) : ioStore(ioctlStorage)
+Dumbfuzzer::Dumbfuzzer(const vector<IoctlDef> &ioctlStorage) : ioStore(ioctlStorage)
 {
-    TPRINT(VERBOSITY_DEBUG, L"Dumbfuzzer constructor\n");
+    TPRINT(VERBOSITY_DEBUG, _T("Dumbfuzzer constructor\n"));
     return;
 }
 
 Dumbfuzzer::~Dumbfuzzer()
 {
-    TPRINT(VERBOSITY_DEBUG, L"Dumbfuzzer destructor\n");
+    TPRINT(VERBOSITY_DEBUG, _T("Dumbfuzzer destructor\n"));
     return;
 }
 
-BOOL Dumbfuzzer::GetRandomIoctlAndBuffer(PDWORD iocode, vector<UCHAR> **output, mt19937 *threadRandomProvider)
+BOOL Dumbfuzzer::GetRandomIoctlAndBuffer(DWORD &iocode, vector<UCHAR> &output, mt19937 *threadRandomProvider)
 {
     BOOL bResult=FALSE;
-    INT i;
+    INT i=0;
     UINT r;
-    DWORD size, ioctlIndex;
-    vector<UCHAR> *fuzzBuf;
+    DWORD size=0, ioctlIndex;
 
     r = (*threadRandomProvider)();
     // Pick random ioctl def
-    ioctlIndex = LOW_WORD(r)%ioStore->count;
-    // Get random size between low and high limits
-    size = ioStore->ioctls[ioctlIndex].dwLowerSize+(HIGH_WORD(r)%(ioStore->ioctls[ioctlIndex].dwUpperSize-ioStore->ioctls[ioctlIndex].dwLowerSize));
-    fuzzBuf = new vector<UCHAR>(size);
-    if(fuzzBuf) {
-        for(i=0; i<(INT)(size-sizeof(INT)); i+=sizeof(INT)) {
-            *(PUINT)(&(*fuzzBuf)[i]) = (*threadRandomProvider)();
-        }
-        // Last DWORD
-        r = (*threadRandomProvider)();
-        for(INT j=0; i<(INT)size; i++,j+=8) {
-            (*fuzzBuf)[i] = (UCHAR)((r>>j)&0xff);
-        }
-        // Set code
-        *iocode = ioStore->ioctls[ioctlIndex].dwIOCTL;
-        *output = fuzzBuf;
-        bResult = TRUE;
+    ioctlIndex = LOW_WORD(r)%ioStore.size();
+    // Get random size between low and high limits (prevent divide by zero)
+    if(ioStore[ioctlIndex].dwUpperSize-ioStore[ioctlIndex].dwLowerSize) {
+        size = ioStore[ioctlIndex].dwLowerSize+(HIGH_WORD(r)%(ioStore[ioctlIndex].dwUpperSize-ioStore[ioctlIndex].dwLowerSize));
     }
+    output.resize(size);
+    if(size>4) {
+        for(i=0; i<(INT)(size-sizeof(INT)); i+=sizeof(INT)) {
+            *(PUINT)(&(output)[i]) = (*threadRandomProvider)();
+        }
+    }
+    // Last DWORD
+    r = (*threadRandomProvider)();
+    for(INT j=0; i<(INT)size; i++,j+=8) {
+        output[i] = (UCHAR)((r>>j)&0xff);
+    }
+    // Set code
+    iocode = ioStore[ioctlIndex].dwIOCTL;
+    bResult = TRUE;
     return bResult;
 }
 
-SlidingDwordFuzzer::SlidingDwordFuzzer(IoctlStorage* ioctlStorage) : ioStore(ioctlStorage), iteration(0), position(0), ioctlIndex(0)
+SlidingDwordFuzzer::SlidingDwordFuzzer(const vector<IoctlDef> &ioctlStorage) : ioStore(ioctlStorage), iteration(0), position(0), ioctlIndex(0)
 {
-    TPRINT(VERBOSITY_DEBUG, L"SlidingDwordFuzzer constructor\n");
+    TPRINT(VERBOSITY_DEBUG, _T("SlidingDwordFuzzer constructor\n"));
     return;
 }
 
 SlidingDwordFuzzer::~SlidingDwordFuzzer()
 {
-    TPRINT(VERBOSITY_DEBUG, L"SlidingDwordFuzzer destructor\n");
+    TPRINT(VERBOSITY_DEBUG, _T("SlidingDwordFuzzer destructor\n"));
     return;
 }
 
-BOOL SlidingDwordFuzzer::GetRandomIoctlAndBuffer(PDWORD iocode, vector<UCHAR> **output, mt19937 *threadRandomProvider)
+BOOL SlidingDwordFuzzer::GetRandomIoctlAndBuffer(DWORD &iocode, vector<UCHAR> &output, mt19937 *threadRandomProvider)
 {
     BOOL bResult=FALSE, retry=TRUE;
     DWORD size;
-    vector<UCHAR> *fuzzBuf;
     PUCHAR pCurrentPosition;
 
     UNREFERENCED_PARAMETER(threadRandomProvider);
 
     while(retry) {
         // Check for ioctls exhaustion
-        if(ioctlIndex<ioStore->count) {
+        if(ioctlIndex<ioStore.size()) {
             // Check that we have another DWORD to try sliding
             if(iteration<_countof(DWORDArray)) {
                 // Check that we have room in this buffer
-                if(position<ioStore->ioctls[ioctlIndex].dwUpperSize-sizeof(DWORD)) {
+                if(position<ioStore[ioctlIndex].dwUpperSize-sizeof(DWORD)) {
                     // exit and fuzz
                     bResult = TRUE;
                     retry = FALSE;
@@ -117,14 +116,14 @@ BOOL SlidingDwordFuzzer::GetRandomIoctlAndBuffer(PDWORD iocode, vector<UCHAR> **
         // Reset return value
         bResult = FALSE;
         // Get max size for this ioctl
-        size = ioStore->ioctls[ioctlIndex].dwUpperSize;
+        size = ioStore[ioctlIndex].dwUpperSize;
         // Alloc buffers
-        fuzzBuf = new vector<UCHAR>(size);
-        pCurrentPosition = fuzzBuf->data()+position;
+        output.resize(size);
+        fill(output.begin(), output.end(), 0);
+        pCurrentPosition = output.data()+position;
         *((DWORD*)pCurrentPosition) = DWORDArray[iteration];
         // Set code
-        *iocode = ioStore->ioctls[ioctlIndex].dwIOCTL;
-        *output = fuzzBuf;
+        iocode = ioStore[ioctlIndex].dwIOCTL;
         bResult = TRUE;
         // Iterating
         position++;
@@ -135,7 +134,7 @@ BOOL SlidingDwordFuzzer::GetRandomIoctlAndBuffer(PDWORD iocode, vector<UCHAR> **
 NamedPipeInputFuzzer::NamedPipeInputFuzzer() : bExit(FALSE)
 {
     canGoCold =TRUE;
-    TPRINT(VERBOSITY_DEBUG, L"NamedPipeInputFuzzer constructor\n");
+    TPRINT(VERBOSITY_DEBUG, _T("NamedPipeInputFuzzer constructor\n"));
     InitializeCriticalSection(&lock);
     return;
 }
@@ -144,7 +143,7 @@ BOOL NamedPipeInputFuzzer::Init()
 {
     BOOL bResult=FALSE;
 
-    dibf_pipe = CreateNamedPipe(L"\\\\.\\pipe\\dibf_pipe",
+    dibf_pipe = CreateNamedPipe(_T("\\\\.\\pipe\\dibf_pipe"),
                                 PIPE_ACCESS_INBOUND,
                                 PIPE_TYPE_MESSAGE|PIPE_READMODE_MESSAGE|PIPE_WAIT|PIPE_REJECT_REMOTE_CLIENTS,
                                 1,
@@ -153,15 +152,15 @@ BOOL NamedPipeInputFuzzer::Init()
                                 0,
                                 NULL);
     if(dibf_pipe!=INVALID_HANDLE_VALUE) {
-        TPRINT(VERBOSITY_DEFAULT, L"Named pipe created, waiting for connection...\n");
+        TPRINT(VERBOSITY_DEFAULT, _T("Named pipe created, waiting for connection...\n"));
         if(ConnectNamedPipe(dibf_pipe, NULL)?TRUE:(GetLastError()==ERROR_PIPE_CONNECTED)) {
-            TPRINT(VERBOSITY_DEFAULT, L"Fuzzing client connected to named pipe\n");
+            TPRINT(VERBOSITY_DEFAULT, _T("Fuzzing client connected to named pipe\n"));
             inputThread = CreateThread(NULL, 0, FuzzInputProc, this, 0, NULL);
             if(inputThread) {
                 bResult = TRUE;
             }
             else {
-                TPRINT(VERBOSITY_ERROR, L"Failed to create fuzz input thread with error %#.8x\n", GetLastError());
+                TPRINT(VERBOSITY_ERROR, _T("Failed to create fuzz input thread with error %#.8x\n"), GetLastError());
             }
         }
     }
@@ -172,7 +171,7 @@ NamedPipeInputFuzzer::~NamedPipeInputFuzzer()
 {
     DWORD waitResult;
 
-    TPRINT(VERBOSITY_DEBUG, L"NamedPipeInputFuzzer destructor\n");
+    TPRINT(VERBOSITY_DEBUG, _T("NamedPipeInputFuzzer destructor\n"));
     bExit = TRUE;
 
     // Wait 2 seconds then kill the input thread
@@ -222,7 +221,7 @@ DWORD WINAPI NamedPipeInputFuzzer::FuzzInputProc(PVOID param)
                 error = GetLastError();
                 switch(error) {
                 case ERROR_BROKEN_PIPE:
-                    TPRINT(VERBOSITY_ERROR, L"Named pipe client disconnected\n");
+                    TPRINT(VERBOSITY_ERROR, _T("Named pipe client disconnected\n"));
                     bDone = TRUE;
                     npif->bExit = TRUE;
                     break;
@@ -237,7 +236,7 @@ DWORD WINAPI NamedPipeInputFuzzer::FuzzInputProc(PVOID param)
                     }
                     break;
                 default:
-                    TPRINT(VERBOSITY_ERROR, L"Reading from named pipe failed with error %#.8x\n", error);
+                    TPRINT(VERBOSITY_ERROR, _T("Reading from named pipe failed with error %#.8x\n"), error);
                     bDone = TRUE;
                     break;
                 }
@@ -248,7 +247,7 @@ DWORD WINAPI NamedPipeInputFuzzer::FuzzInputProc(PVOID param)
     return ERROR_SUCCESS;
 }
 
-BOOL NamedPipeInputFuzzer::GetRandomIoctlAndBuffer(PDWORD iocode, vector<UCHAR> **output, mt19937 *threadRandomProvider)
+BOOL NamedPipeInputFuzzer::GetRandomIoctlAndBuffer(DWORD &iocode, vector<UCHAR> &output, mt19937 *threadRandomProvider)
 {
     BOOL bResult=FALSE;
     vector<UCHAR> *packet=NULL;
@@ -264,9 +263,9 @@ BOOL NamedPipeInputFuzzer::GetRandomIoctlAndBuffer(PDWORD iocode, vector<UCHAR> 
     LeaveCriticalSection(&lock);
     if(bResult) {
         // Parse io packet (last 4 bytes is ioctl code)
-        *iocode = *(PDWORD)&(packet->data()[packet->size()-sizeof(DWORD)]);
+        iocode = *(PDWORD)&(packet->data()[packet->size()-sizeof(DWORD)]);
         packet->resize(packet->size()-sizeof(DWORD));
-        *output = packet;
+        output = *packet; // TODO: avoid this copy
     }
     return bResult;
 }

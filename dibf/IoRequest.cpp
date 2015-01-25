@@ -31,13 +31,11 @@ static BOOL IsInCArray(const DWORD (&table)[SIZE], DWORD error)
 // Simple constructors
 IoRequest::IoRequest(HANDLE hDev) : hDev(hDev), outBuf(DEFAULT_OUTLEN)
 {
-    inBuf = new vector<UCHAR>();
     ZeroMemory(&overlp, sizeof(overlp));
 }
 
 IoRequest::IoRequest(HANDLE hDev, DWORD code) : hDev(hDev), iocode(code), outBuf(DEFAULT_OUTLEN)
 {
-    inBuf = new vector<UCHAR>();
     ZeroMemory(&overlp, sizeof(overlp));
 }
 
@@ -49,7 +47,6 @@ VOID IoRequest::reset()
 
 IoRequest::~IoRequest()
 {
-    delete inBuf;
     return;
 }
 
@@ -57,7 +54,7 @@ BOOL IoRequest::allocBuffers(DWORD inSize, DWORD outSize)
 {
     BOOL bResult=TRUE;
     try {
-        inBuf->resize(inSize);
+        inBuf.resize(inSize);
         outBuf.resize(outSize);
         bResult = TRUE;
     }
@@ -72,7 +69,7 @@ BOOL IoRequest::sendRequest(BOOL async, PDWORD lastError)
     BOOL bResult;
     DWORD dwBytes;
 
-    bResult = DeviceIoControl(hDev, iocode, inBuf->data(), getInputBufferLength(), outBuf.data(), getOutputBufferLength(), &dwBytes, async ? &overlp : NULL);
+    bResult = DeviceIoControl(hDev, iocode, inBuf.data(), getInputBufferLength(), outBuf.data(), getOutputBufferLength(), &dwBytes, async ? &overlp : NULL);
     if(!bResult) {
         *lastError = GetLastError();
     }
@@ -122,11 +119,11 @@ BOOL IoRequest::testSendForValidRequest(BOOL deep)
     if(bResult) {
         FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM|FORMAT_MESSAGE_ALLOCATE_BUFFER, 0, lastError, 0, (LPTSTR)&errormessage, 4, NULL);
         if(errormessage) {
-            TPRINT(VERBOSITY_INFO, L"Found IOCTL: %#.8x failed with error %#.8x - %s", iocode, lastError, errormessage);
+            TPRINT(VERBOSITY_INFO, _T("Found IOCTL: %#.8x failed with error %#.8x - %s"), iocode, lastError, errormessage);
             LocalFree(errormessage);
         }
         else {
-            TPRINT(VERBOSITY_INFO, L"Found IOCTL: %#.8x failed with error %#.8x\n", iocode, lastError);
+            TPRINT(VERBOSITY_INFO, _T("Found IOCTL: %#.8x failed with error %#.8x\n"), iocode, lastError);
         }
     }
     return bResult;
@@ -148,13 +145,7 @@ BOOL IoRequest::testSendForValidBufferSize(DWORD testSize)
 BOOL IoRequest::fuzz(FuzzingProvider* fp, mt19937* prng)
 {
     BOOL bResult=FALSE;
-    vector<UCHAR> *fuzzBuf;
 
-    bResult = fp->GetRandomIoctlAndBuffer(&iocode, &fuzzBuf, prng);
-    if(bResult) {
-        // Replace input buffer
-        delete inBuf;   // cheaper than copy
-        inBuf = fuzzBuf;
-    }
+    bResult = fp->GetRandomIoctlAndBuffer(iocode, inBuf, prng);
     return bResult;
 }

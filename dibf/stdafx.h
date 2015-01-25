@@ -15,6 +15,14 @@
 #include <time.h>
 // C++
 #include <random>
+#include <string>
 #include <vector>
 #include <queue>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+// Unicode
+#include <locale>
+#include <codecvt>
+#include <cvt/wstring>
 using namespace std;
