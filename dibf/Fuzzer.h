@@ -23,7 +23,6 @@ public:
     public:
         Tracker();
         ~Tracker();
-        Fuzzer *currentFuzzer;
         HANDLE hEvent; // The event signaled by ctrl-c
         class Stats {
         public:

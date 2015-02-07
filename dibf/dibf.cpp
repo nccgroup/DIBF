@@ -372,11 +372,17 @@ BOOL Dibf::ReadBruteforceResult()
         getline(logFile, (string&)deviceNameFromFile);
         if(logFile.good()) {
             // Device name mismatch between file and command line
-            if(gotDeviceName&&(deviceNameFromFile!=deviceName)) {
-                TPRINT(VERBOSITY_ERROR, _T("Device name from command line (%s) and from existing %s file (%s) differ, aborting\n"), (LPCTSTR)deviceName, DIBF_BF_LOG_FILE, (LPCTSTR)deviceNameFromFile);
-                gotDeviceName = FALSE;
+            if(gotDeviceName) {
+                if(deviceNameFromFile!=deviceName) {
+                    TPRINT(VERBOSITY_ERROR, _T("Device name from command line (%s) and from existing %s file (%s) differ, aborting\n"), (LPCTSTR)deviceName, DIBF_BF_LOG_FILE, (LPCTSTR)deviceNameFromFile);
+                    gotDeviceName = FALSE;
+                }
             }
             else {
+                deviceName = deviceNameFromFile;
+                gotDeviceName = TRUE;
+            }
+            if(gotDeviceName) {
                 // Then read up all the IOCTLs and their size edges
                 while(!logFile.eof()) {
                     getline(logFile, (string&)line);
@@ -389,7 +395,7 @@ BOOL Dibf::ReadBruteforceResult()
                     }
                 }
                 TPRINT(VERBOSITY_DEFAULT, _T("Found and successfully loaded values from %s\n"), DIBF_BF_LOG_FILE);
-                TPRINT(VERBOSITY_INFO, _T(" Device name: %s\n"), (LPCTSTR)(gotDeviceName?deviceNameFromFile:deviceName));
+                TPRINT(VERBOSITY_INFO, _T(" Device name: %s\n"), (LPCTSTR)deviceName);
                 TPRINT(VERBOSITY_INFO, _T(" Number of IOCTLs: %d\n"), ioctls.size());
                 bResult = TRUE;
             }

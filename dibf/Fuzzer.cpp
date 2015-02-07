@@ -8,7 +8,6 @@ Fuzzer::Tracker Fuzzer::tracker;
 Fuzzer::Fuzzer(FuzzingProvider *p) : fuzzingProvider(p)
 {
     TPRINT(VERBOSITY_DEBUG, _T("Fuzzer constructor\n"));
-    tracker.currentFuzzer = this;
     this->state=STATE_FUZZING;
 }
 
