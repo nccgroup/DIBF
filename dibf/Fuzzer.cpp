@@ -5,7 +5,7 @@
 Fuzzer::Tracker Fuzzer::tracker;
 
 // Trivial constructor
-Fuzzer::Fuzzer(FuzzingProvider *p) : fuzzingProvider(p)
+Fuzzer::Fuzzer(FuzzingProvider *p) : fuzzingProvider(p), hDev(INVALID_HANDLE_VALUE)
 {
     TPRINT(VERBOSITY_DEBUG, _T("Fuzzer constructor\n"));
     this->state=STATE_FUZZING;
@@ -14,6 +14,9 @@ Fuzzer::Fuzzer(FuzzingProvider *p) : fuzzingProvider(p)
 // Simple destructor
 Fuzzer::~Fuzzer() {
     TPRINT(VERBOSITY_DEBUG, _T("Fuzzer destructor\n"));
+    if(hDev!=INVALID_HANDLE_VALUE) {
+        CloseHandle(hDev);
+    }
     delete fuzzingProvider;
 }
 

@@ -89,3 +89,15 @@ extern ULONG g_verbose;
 
 // Functions
 VOID PrintVerboseError(ULONG, DWORD);
+
+// Quick template to find error code in regular static c arrays
+template<size_t SIZE>
+static BOOL IsInCArray(const DWORD (&table)[SIZE], DWORD error)
+{
+    BOOL bResult=FALSE;
+
+    if(find(begin(table), end(table), error)!= end(table)) {
+        bResult = TRUE;
+    }
+    return bResult;
+}

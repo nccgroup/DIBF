@@ -428,52 +428,43 @@ BOOL Dibf::ReadBruteforceResult()
 //
 VOID Dibf::FuzzIOCTLs(DWORD dwFuzzStage, ULONG maxThreads, PULONG timeLimits, ULONG maxPending, ULONG cancelRate)
 {
-    HANDLE hDev=INVALID_HANDLE_VALUE;
-
-    hDev = CreateFile(deviceName, MAXIMUM_ALLOWED, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
     // If enabled by command line, run sliding DWORD fuzzer
-    if(hDev!=INVALID_HANDLE_VALUE&&timeLimits[0]&&(dwFuzzStage & DWORD_FUZZER) == DWORD_FUZZER) {
+    if(timeLimits[0]&&(dwFuzzStage & DWORD_FUZZER) == DWORD_FUZZER) {
         TPRINT(VERBOSITY_DEFAULT, _T("<<<< RUNNING SLIDING DWORD FUZZER >>>>\n"));
         Fuzzer::printDateTime(FALSE);
-        SyncFuzzer *syncf = new SyncFuzzer(hDev, timeLimits[0], new SlidingDwordFuzzer(ioctls));
-        if(syncf->init()) {
+        SyncFuzzer *syncf = new SyncFuzzer(timeLimits[0], new SlidingDwordFuzzer(ioctls));
+        if(syncf->init(deviceName)) {
             syncf->start();
         }
         else {
             TPRINT(VERBOSITY_ERROR, _T("SlidingDWORD fuzzer init failed. Aborting run.\n"));
         }
-        Fuzzer::tracker.stats.print();
         delete syncf;
-        CloseHandle(hDev);
+        Fuzzer::tracker.stats.print();
     }
-
-    hDev = CreateFile(deviceName, MAXIMUM_ALLOWED, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
     // If enabled by command line, run pure random fuzzer
-    if(hDev!=INVALID_HANDLE_VALUE&&timeLimits[1]&&(dwFuzzStage & RANDOM_FUZZER)==RANDOM_FUZZER) {
+    if(timeLimits[1]&&(dwFuzzStage & RANDOM_FUZZER)==RANDOM_FUZZER) {
         TPRINT(VERBOSITY_DEFAULT, _T("<<<< RUNNING RANDOM FUZZER >>>>\n"));
         Fuzzer::printDateTime(FALSE);
-        AsyncFuzzer *asyncf = new AsyncFuzzer(hDev, timeLimits[1], maxPending, cancelRate, new Dumbfuzzer(ioctls));
-        if(asyncf->init(maxThreads)) {
+        AsyncFuzzer *asyncf = new AsyncFuzzer(timeLimits[1], maxPending, cancelRate, new Dumbfuzzer(ioctls));
+        if(asyncf->init(deviceName, maxThreads)) {
             asyncf->start();
         }
         else {
             TPRINT(VERBOSITY_ERROR, _T("Dumbfuzzer init failed. Aborting run.\n"));
         }
-        Fuzzer::tracker.stats.print();
         delete asyncf;
-        CloseHandle(hDev);
+        Fuzzer::tracker.stats.print();
     }
-
-    hDev = CreateFile(deviceName, MAXIMUM_ALLOWED, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
     // If enabled by command line, run custom fuzzer (taking input from named pipe)
-    if(hDev!=INVALID_HANDLE_VALUE&&timeLimits[2]&&(dwFuzzStage & NP_FUZZER) == NP_FUZZER) {
+    if(timeLimits[2]&&(dwFuzzStage & NP_FUZZER) == NP_FUZZER) {
         TPRINT(VERBOSITY_DEFAULT, _T("<<<< RUNNING CUSTOM FUZZER >>>>\n"));
         Fuzzer::printDateTime(FALSE);
         AsyncFuzzer *customFuzzer=NULL;
         NamedPipeInputFuzzer *pipef = new NamedPipeInputFuzzer();
         if(pipef->Init()) {
-            customFuzzer = new AsyncFuzzer(hDev, timeLimits[2], maxPending, cancelRate, pipef);
-            if(customFuzzer->init(maxThreads)) {
+            customFuzzer = new AsyncFuzzer(timeLimits[2], maxPending, cancelRate, pipef);
+            if(customFuzzer->init(deviceName, maxThreads)) {
                 customFuzzer->start();
             }
             else {
@@ -485,7 +476,6 @@ VOID Dibf::FuzzIOCTLs(DWORD dwFuzzStage, ULONG maxThreads, PULONG timeLimits, UL
             TPRINT(VERBOSITY_ERROR, _T("Failed to initialize named pipe fuzzing provider. Aborting run.\n"));
         }
         Fuzzer::tracker.stats.print();
-        CloseHandle(hDev);
     } // if async fuzzer
     return;
 }

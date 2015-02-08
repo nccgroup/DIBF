@@ -10,9 +10,9 @@
 class SyncFuzzer : public Fuzzer
 {
 public:
-    SyncFuzzer(HANDLE, ULONG, FuzzingProvider*);
+    SyncFuzzer(ULONG, FuzzingProvider*);
     ~SyncFuzzer();
-    BOOL init();
+    BOOL init(tstring);
     BOOL start();
 private:
     static DWORD WINAPI FuzzProc(PVOID);

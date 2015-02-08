@@ -7,6 +7,9 @@
 #define DEEP_BF_MAX ((DWORD)32)
 #define DEFAULT_OUTLEN ((DWORD)256)
 
+#define IsValidCode(ERROR) (!IsInCArray<_countof(invalidIoctlErrorCodes)>(invalidIoctlErrorCodes, ERROR))
+#define IsValidSize(ERROR) (!IsInCArray<_countof(invalidBufSizeErrorCodes)>(invalidBufSizeErrorCodes, ERROR))
+
 class IoRequest
 {
 public:
@@ -34,7 +37,7 @@ private:
     vector<UCHAR> outBuf;
     // Functions
     BOOL allocBuffers(DWORD, DWORD);
-    BOOL sendRequest(BOOL, PDWORD);
+    BOOL sendRequest(BOOL, DWORD&);
     DWORD getInputBufferLength(){return inBuf.size()*sizeof(UCHAR);}
     DWORD getOutputBufferLength(){return outBuf.size()*sizeof(UCHAR);}
 };

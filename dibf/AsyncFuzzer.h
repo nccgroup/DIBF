@@ -19,9 +19,9 @@
 class AsyncFuzzer : public Fuzzer
 {
 public:
-    AsyncFuzzer(HANDLE, ULONG, ULONG, ULONG, FuzzingProvider*);
+    AsyncFuzzer(ULONG, ULONG, ULONG, FuzzingProvider*);
     ~AsyncFuzzer();
-    BOOL init(ULONG);
+    BOOL init(tstring, ULONG);
     BOOL start();
 private:
     // Members

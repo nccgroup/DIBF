@@ -1,10 +1,9 @@
 #include "stdafx.h"
 #include "AsyncFuzzer.h"
 
-AsyncFuzzer::AsyncFuzzer(HANDLE hDevice, ULONG timeLimit, ULONG maxPending, ULONG cancelRate, FuzzingProvider *provider) : Fuzzer(provider)
+AsyncFuzzer::AsyncFuzzer(ULONG timeLimit, ULONG maxPending, ULONG cancelRate, FuzzingProvider *provider) : Fuzzer(provider)
 {
     TPRINT(VERBOSITY_DEBUG, _T("AsyncFuzzer constructor\n"));
-    this->hDev = hDevice;
     this->currentNbThreads = 0;
     this->startingNbThreads = 0;
     this->timeLimit = timeLimit;
@@ -28,28 +27,31 @@ AsyncFuzzer::~AsyncFuzzer()
 }
 
 // RETURN VALUE: TRUE if success, FALSE if failure
-BOOL AsyncFuzzer::init(ULONG nbThreads)
+BOOL AsyncFuzzer::init(tstring deviceName, ULONG nbThreads)
 {
     BOOL bResult=FALSE;
     UINT nbThreadsValid=0;
 
-    // Get a valid nb of threads: MAX_THREADS if too big, twice the nb of procs if too small
-    if(nbThreads>MAX_THREADS) {
-        nbThreadsValid = MAX_THREADS;
-        TPRINT(VERBOSITY_INFO, _T("Nb of threads too big, using %d\n"), MAX_THREADS);
-    }
-    else {
-        nbThreadsValid = nbThreads ? nbThreads : GetNumberOfProcs()*2;
-    }
-    threads = (PHANDLE)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(HANDLE)*nbThreadsValid);
-    if(threads) {
-        startingNbThreads = nbThreadsValid;
-        if(InitializeThreadsAndCompletionPort()) {
-            TPRINT(VERBOSITY_INFO, _T("%u threads and IOCP created successfully\n"), startingNbThreads);
-            bResult = TRUE;
+    hDev = CreateFile(deviceName, MAXIMUM_ALLOWED, FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+    if(hDev!=INVALID_HANDLE_VALUE) {
+        // Get a valid nb of threads: MAX_THREADS if too big, twice the nb of procs if too small
+        if(nbThreads>MAX_THREADS) {
+            nbThreadsValid = MAX_THREADS;
+            TPRINT(VERBOSITY_INFO, _T("Nb of threads too big, using %d\n"), MAX_THREADS);
         }
         else {
-            TPRINT(VERBOSITY_ERROR, _T("Failed to create Threads and IOCP\n"));
+            nbThreadsValid = nbThreads ? nbThreads : GetNumberOfProcs()*2;
+        }
+        threads = (PHANDLE)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(HANDLE)*nbThreadsValid);
+        if(threads) {
+            startingNbThreads = nbThreadsValid;
+            if(InitializeThreadsAndCompletionPort()) {
+                TPRINT(VERBOSITY_INFO, _T("%u threads and IOCP created successfully\n"), startingNbThreads);
+                bResult = TRUE;
+            }
+            else {
+                TPRINT(VERBOSITY_ERROR, _T("Failed to create Threads and IOCP\n"));
+            }
         }
     }
     return bResult;
