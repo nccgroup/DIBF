@@ -208,28 +208,31 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
         }
     } // for
     if(validUsage) {
-        // Unless -i
-        if(!bIgnoreFile) {
-            // Attempt to read file
-            TPRINT(VERBOSITY_DEFAULT, _T("<<<< CAPTURING IOCTL DEFINITIONS FROM FILE >>>>\n"));
-            bIoctls = ReadBruteforceResult();
+        // If the only fuzzer is NP fuzzer, skip all ioctl defs related operations
+        if(dwFuzzStage!=NP_FUZZER) {
+            // Skip reading from file if -i or if only NP fuzzing
+            if(!bIgnoreFile) {
+                // Attempt to read file
+                TPRINT(VERBOSITY_DEFAULT, _T("<<<< CAPTURING IOCTL DEFINITIONS FROM FILE >>>>\n"));
+                bIoctls = ReadBruteforceResult();
+            }
+            // If we don't have the ioctls defs from file
+            if(!bIoctls) {
+                if(gotDeviceName) {
+                    // Open the device based on the file name passed from params, fuzz the IOCTLs and return the device handle
+                    bIoctls = DoAllBruteForce(dwIOCTLStart, dwIOCTLEnd, bDeepBruteForce);
+                }
+                else {
+                    TPRINT(VERBOSITY_ERROR, _T("No valid device name provided, exiting\n"));
+                }
+            }
         }
-        // If we don't have thee ioctls defs from file
-        if(!bIoctls) {
-            if(gotDeviceName) {
-                // Open the device based on the file name passed from params, fuzz the IOCTLs and return the device handle
-                bIoctls = DoAllBruteForce(dwIOCTLStart, dwIOCTLEnd, bDeepBruteForce);
-            }
-            else {
-                TPRINT(VERBOSITY_ERROR, _T("No valid device name provided, exiting\n"));
-            }
+        else {
+            bIoctls = TRUE;
         }
         // At this point we need ioctl defs
         if(bIoctls) {
             FuzzIOCTLs(dwFuzzStage, maxThreads, timeLimits, maxPending, cancelRate);
-        }
-        else {
-            TPRINT(VERBOSITY_ERROR, _T("No IOCTLs to fuzz, exiting\n"));
         }
     } // if validUsage
     else {
