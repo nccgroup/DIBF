@@ -1,6 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2012
+# Visual Studio 14
+VisualStudioVersion = 14.0.23107.0
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dibf", "dibf\dibf.vcxproj", "{E1847B66-B223-448D-A82F-0399A13404F1}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "iocode", "iocode\iocode.vcxproj", "{85132FDA-B11C-412E-8FC7-E7305F2A853C}"

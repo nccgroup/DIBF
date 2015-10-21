@@ -345,7 +345,7 @@ BOOL Dibf::WriteBruteforceResult()
         logFile << (string&)deviceName << "\n";
         // Write all found ioctls
         for(IoctlDef iodef : ioctls) {
-            logFile << iodef.dwIOCTL << " " << iodef.dwLowerSize << " " << iodef.dwUpperSize << "\n";
+            logFile << std::hex << iodef.dwIOCTL << " " << iodef.dwLowerSize << " " << iodef.dwUpperSize << "\n";
         }
         TPRINT(VERBOSITY_INFO, _T("Successfully written IOCTLs data to log file %s\n"), DIBF_BF_LOG_FILE);
         logFile.close();
@@ -392,7 +392,7 @@ BOOL Dibf::ReadBruteforceResult()
                     if(!line.empty()) {
                         IoctlDef iodef;
                         istringstream stream(line);
-                        stream >> iodef.dwIOCTL >> iodef.dwLowerSize>> iodef.dwUpperSize;
+                        stream >> std::hex >> iodef.dwIOCTL >> iodef.dwLowerSize>> iodef.dwUpperSize;
                         ioctls.push_back(iodef);
                         TPRINT(VERBOSITY_ALL, _T("Loaded IOCTL %#.8x [%u, %u]\n"), iodef.dwIOCTL, iodef.dwLowerSize, iodef.dwUpperSize);
                     }
@@ -535,6 +535,28 @@ VOID Dibf::usage(VOID)
 }
 
 //DESCRIPTION:
+// Handle ctrl-c input and exit
+//
+//INPUT:
+// DWORD dwCtrlType - Code for event type
+//
+//OUTPUT:
+// returns FALSE if event is not CTRL_C_EVENT
+//
+BOOL CtrlHandlerRoutine(DWORD dwCtrlType)
+{
+	if (dwCtrlType == CTRL_C_EVENT)
+	{
+		TPRINT(VERBOSITY_DEFAULT, _T("CTRL_C_EVENT Detected. Exiting."));
+		ExitProcess(9001);
+	} 
+	else
+	{
+		return FALSE;
+	}
+}
+
+//DESCRIPTION:
 // main
 //
 //INPUT:
@@ -545,6 +567,7 @@ VOID Dibf::usage(VOID)
 //
 INT _tmain(INT argc, _TCHAR* argv[])
 {
+	SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandlerRoutine, TRUE);
     Dibf dibf;
     dibf.start(argc, argv);
     return 0;
