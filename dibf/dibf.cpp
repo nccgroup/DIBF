@@ -264,12 +264,14 @@ BOOL Dibf::SmartBruteCheck(HANDLE hDevice, DWORD dwIOCTLStart, DWORD dwIOCTLEnd,
         }
         lastError = 0;
         ioRequest.SetIoCode(dwIOCTL);
-        ioRequest.testSendForValidRequest(bDeepBruteForce, lastError);
-        if (++returnMap[lastError] == 50)
+        if (ioRequest.testSendForValidRequest(bDeepBruteForce, lastError))
         {
-            TPRINT(VERBOSITY_DEFAULT, _T("Adding error to banned list: %#.8x\n"), lastError)
-            bannedErrors.resize(dwIOCTLIndex + 1);
-            bannedErrors[dwIOCTLIndex++] = lastError;
+            if (++returnMap[lastError] == 50)
+            {
+                TPRINT(VERBOSITY_DEFAULT, _T("Adding error to banned list: %#.8x\n"), lastError)
+                    bannedErrors.resize(dwIOCTLIndex + 1);
+                bannedErrors[dwIOCTLIndex++] = lastError;
+            }
         }
     }
     TPRINT(VERBOSITY_DEFAULT, _T("Smart error handling complete\n"))
