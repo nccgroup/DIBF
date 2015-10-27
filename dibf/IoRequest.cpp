@@ -55,7 +55,6 @@ BOOL IoRequest::sendRequest(BOOL async, DWORD &lastError)
     DWORD dwBytes;
 
     bResult = DeviceIoControl(hDev, iocode, inBuf.data(), getInputBufferLength(), outBuf.data(), getOutputBufferLength(), &dwBytes, async ? &overlp : NULL);
-    bResult = 0; //Temporary hack while we make something smarter to handle false positives
     if(!bResult) {
         lastError = GetLastError();
     }
@@ -88,10 +87,10 @@ DWORD IoRequest::sendAsync()
     return dwResult;
 }
 
-BOOL IoRequest::testSendForValidRequest(BOOL deep)
+BOOL IoRequest::testSendForValidRequest(BOOL deep, DWORD & lastError)
 {
     BOOL bResult=FALSE;
-    DWORD dwSize, lastError=0;
+    DWORD dwSize;
     LPTSTR errormessage;
 
     // If deep, attempt inlen 0-256 otherwise just try inlen 32

@@ -21,7 +21,7 @@ public:
     OVERLAPPED overlp; // oop?
     DWORD GetIoCode() {return iocode;}
     VOID SetIoCode(DWORD iocode) {this->iocode=iocode;}
-    BOOL testSendForValidRequest(BOOL);
+    BOOL testSendForValidRequest(BOOL, DWORD&);
     BOOL testSendForValidBufferSize(DWORD);
     VOID reset();
     BOOL sendSync();
@@ -37,8 +37,8 @@ private:
     vector<UCHAR> inBuf;
     vector<UCHAR> outBuf;
     // Functions
-    BOOL allocBuffers(DWORD, DWORD);
     BOOL sendRequest(BOOL, DWORD&);
+    BOOL allocBuffers(DWORD, DWORD);
     DWORD getInputBufferLength(){return inBuf.size()*sizeof(UCHAR);}
     DWORD getOutputBufferLength(){return outBuf.size()*sizeof(UCHAR);}
 };

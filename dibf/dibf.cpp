@@ -65,6 +65,7 @@ BOOL Dibf::DoAllBruteForce(DWORD dwIOCTLStart, DWORD dwIOCTLEnd, BOOL deep)
         //Bruteforce IOCTLs
         TPRINT(VERBOSITY_DEFAULT, _T("<<<< GUESSING IOCTLS %s>>>>\n"), deep?_T("(DEEP MODE)"):_T(""));
         TPRINT(VERBOSITY_INFO, _T("Bruteforcing ioctl codes\n"));
+        SmartBruteCheck(hDevice, dwIOCTLStart, dwIOCTLEnd, deep);
         bResult = BruteForceIOCTLs(hDevice, dwIOCTLStart, dwIOCTLEnd, deep);
         if(bResult) {
             TPRINT(VERBOSITY_DEFAULT, _T("---------------------------------------\n\n"));
@@ -245,9 +246,48 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
     return 0;
 }
 
-BOOL Dibf::SmartBruteCheck(DWORD dwIOCTL)
+BOOL Dibf::SmartBruteCheck(HANDLE hDevice, DWORD dwIOCTLStart, DWORD dwIOCTLEnd, BOOL bDeepBruteForce)
 {
+    // Iterate through 5k guesses
+    // Map every Error code that gets returned
+    // If count == 50, add to banned list
+    // TODO: Make variables for guesses etc. Fix up message output stuff.
+
+    DWORD dwIOCTL, lastError, dwIOCTLIndex = 0;
+    IoRequest ioRequest(hDevice);  // This unique request gets reused iteratively
+
+    TPRINT(VERBOSITY_DEFAULT, _T("Starting Smart Error Handling\n"))
+    for (dwIOCTL = dwIOCTLStart; dwIOCTL <= dwIOCTLEnd; dwIOCTL++) {
+        if (dwIOCTL - dwIOCTLStart > 5000) 
+        {
+            break;
+        }
+        lastError = 0;
+        ioRequest.SetIoCode(dwIOCTL);
+        ioRequest.testSendForValidRequest(bDeepBruteForce, lastError);
+        if (++returnMap[lastError] == 50)
+        {
+            TPRINT(VERBOSITY_DEFAULT, _T("Adding error to banned list: %#.8x\n"), lastError)
+            bannedErrors.resize(dwIOCTLIndex + 1);
+            bannedErrors[dwIOCTLIndex++] = lastError;
+        }
+    }
+    TPRINT(VERBOSITY_DEFAULT, _T("Smart error handling complete\n"))
     return TRUE;
+}
+
+BOOL Dibf::IsBanned(DWORD lastError)
+{
+    BOOL banned = FALSE;
+    if (std::find(bannedErrors.begin(), bannedErrors.end(), lastError) != bannedErrors.end())
+    {
+        banned = TRUE;
+    }
+    else
+    {
+        banned = FALSE;
+    }
+    return banned;
 }
 
 //DESCRIPTION:
@@ -263,14 +303,14 @@ BOOL Dibf::SmartBruteCheck(DWORD dwIOCTL)
 // FALSE if no ioctl was found, TRUE otherwise
 BOOL Dibf::BruteForceIOCTLs(HANDLE hDevice, DWORD dwIOCTLStart, DWORD dwIOCTLEnd, BOOL bDeepBruteForce)
 {
-    DWORD dwIOCTL, dwIOCTLIndex=0;
+    DWORD dwIOCTL, lastError, dwIOCTLIndex=0;
     IoRequest ioRequest(hDevice);  // This unique request gets reused iteratively
 
     for(dwIOCTL=dwIOCTLStart; dwIOCTL<=dwIOCTLEnd; dwIOCTL++) {
+        lastError = 0;
         ioRequest.SetIoCode(dwIOCTL);
-        if(ioRequest.testSendForValidRequest(bDeepBruteForce)) {
+        if(ioRequest.testSendForValidRequest(bDeepBruteForce, lastError) && !IsBanned(lastError)) {
             if(dwIOCTLIndex<MAX_IOCTLS) {
-                SmartBruteCheck(dwIOCTL);
                 ioctls.resize(dwIOCTLIndex+1);
                 ioctls[dwIOCTLIndex++].dwIOCTL = dwIOCTL;
             }
@@ -280,7 +320,7 @@ BOOL Dibf::BruteForceIOCTLs(HANDLE hDevice, DWORD dwIOCTLStart, DWORD dwIOCTLEnd
             }
         }
         if(dwIOCTL % 0x010000 == 0) {
-            TPRINT(VERBOSITY_INFO, _T("Current iocode: %#.8x (found %u ioctls so far)\n"), dwIOCTL, dwIOCTLIndex);
+            TPRINT(VERBOSITY_DEFAULT, _T("Current iocode: %#.8x (found %u ioctls so far)\n"), dwIOCTL, dwIOCTLIndex);
         }
         if (userCtrlBreak)
         {
