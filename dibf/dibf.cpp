@@ -13,6 +13,8 @@
 #include "AsyncFuzzer.h"
 #include "SyncFuzzer.h"
 
+static BOOL userCtrlBreak;
+
 Dibf::Dibf() : gotDeviceName(FALSE)
 {
     TPRINT(VERBOSITY_DEBUG, _T("Dibf constructor\n"));
@@ -88,7 +90,7 @@ BOOL Dibf::DoAllBruteForce(DWORD dwIOCTLStart, DWORD dwIOCTLEnd, BOOL deep)
 BOOL Dibf::start(INT argc, _TCHAR* argv[])
 {
     BOOL bDeepBruteForce=FALSE, bIoctls=FALSE, validUsage=TRUE, bIgnoreFile=FALSE;
-    DWORD dwIOCTLStart=START_IOCTL_VALUE, dwIOCTLEnd=END_IOCTL_VALUE, dwFuzzStage=0xf;
+    DWORD dwIOCTLStart=START_IOCTL_VALUE, dwIOCTLEnd=END_IOCTL_VALUE, dwFuzzStage=0x3;
     ULONG maxThreads=0, timeLimits[3]={INFINITE, INFINITE,INFINITE}, cancelRate=CANCEL_RATE, maxPending=MAX_PENDING;
     LONG i=1;
 
@@ -219,8 +221,10 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
             // If we don't have the ioctls defs from file
             if(!bIoctls) {
                 if(gotDeviceName) {
+                    SetConsoleCtrlHandler((PHANDLER_ROUTINE)BruteforceCtrlHandler, TRUE); // Hacky exit for brute force mode
                     // Open the device based on the file name passed from params, fuzz the IOCTLs and return the device handle
                     bIoctls = DoAllBruteForce(dwIOCTLStart, dwIOCTLEnd, bDeepBruteForce);
+                    SetConsoleCtrlHandler((PHANDLER_ROUTINE)BruteforceCtrlHandler, FALSE);
                 }
                 else {
                     TPRINT(VERBOSITY_ERROR, _T("No valid device name provided, exiting\n"));
@@ -239,6 +243,11 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
         usage();
     }
     return 0;
+}
+
+BOOL Dibf::SmartBruteCheck(DWORD dwIOCTL)
+{
+    return TRUE;
 }
 
 //DESCRIPTION:
@@ -261,16 +270,21 @@ BOOL Dibf::BruteForceIOCTLs(HANDLE hDevice, DWORD dwIOCTLStart, DWORD dwIOCTLEnd
         ioRequest.SetIoCode(dwIOCTL);
         if(ioRequest.testSendForValidRequest(bDeepBruteForce)) {
             if(dwIOCTLIndex<MAX_IOCTLS) {
+                SmartBruteCheck(dwIOCTL);
                 ioctls.resize(dwIOCTLIndex+1);
                 ioctls[dwIOCTLIndex++].dwIOCTL = dwIOCTL;
             }
             else {
                 TPRINT(VERBOSITY_ERROR, _T("Found IOCTL but out of storage space, stopping bruteforce\n"));
-                return MAX_IOCTLS;
+                return FALSE;
             }
         }
         if(dwIOCTL % 0x010000 == 0) {
             TPRINT(VERBOSITY_INFO, _T("Current iocode: %#.8x (found %u ioctls so far)\n"), dwIOCTL, dwIOCTLIndex);
+        }
+        if (userCtrlBreak)
+        {
+            break;
         }
     }
     TPRINT(VERBOSITY_ALL, _T("Found %u ioctls\n"), dwIOCTLIndex);
@@ -513,7 +527,7 @@ VOID Dibf::usage(VOID)
     TPRINT(VERBOSITY_DEFAULT, _T(" -a [max threads] Max number of threads, VERBOSITY_DEFAULT is 2xNbOfProcessors, max is %d\n"), MAX_THREADS);
     TPRINT(VERBOSITY_DEFAULT, _T(" -c [%% cancelation] Async cancelation attempt percent rate (VERBOSITY_DEFAULT %d)\n"), CANCEL_RATE);
     TPRINT(VERBOSITY_DEFAULT, _T(" -f [0-7] Fuzz flag. OR values together to run multiple\n"));
-    TPRINT(VERBOSITY_DEFAULT, _T("          fuzzer stages. If left out, it defaults to all\n"));
+    TPRINT(VERBOSITY_DEFAULT, _T("          fuzzer stages. If left out, it defaults to 0x3\n"));
     TPRINT(VERBOSITY_DEFAULT, _T("          stages.\n"));
     TPRINT(VERBOSITY_DEFAULT, _T("          0 = Brute-force IOCTLs only\n"));
     TPRINT(VERBOSITY_DEFAULT, _T("          1 = Sliding DWORD (sync)\n"));
@@ -534,26 +548,17 @@ VOID Dibf::usage(VOID)
     TPRINT(VERBOSITY_DEFAULT, _T(" - The command-line flags are case-insensitive.\n"));
 }
 
-//DESCRIPTION:
-// Handle ctrl-c input and exit
-//
-//INPUT:
-// DWORD dwCtrlType - Code for event type
-//
-//OUTPUT:
-// returns FALSE if event is not CTRL_C_EVENT
-//
-BOOL CtrlHandlerRoutine(DWORD dwCtrlType)
+BOOL __stdcall Dibf::BruteforceCtrlHandler(DWORD fdwCtrlType)
 {
-	if (dwCtrlType == CTRL_C_EVENT)
-	{
-		TPRINT(VERBOSITY_DEFAULT, _T("CTRL_C_EVENT Detected. Exiting."));
-		ExitProcess(9001);
-	} 
-	else
-	{
-		return FALSE;
-	}
+    if (fdwCtrlType == CTRL_C_EVENT || fdwCtrlType == CTRL_BREAK_EVENT)
+    {
+        TPRINT(VERBOSITY_DEFAULT, _T("CTRL_C_EVENT Detected. Exiting BruteForce."));
+        userCtrlBreak = TRUE;
+    }
+    else {
+        userCtrlBreak = TRUE;
+    }
+    return userCtrlBreak;
 }
 
 //DESCRIPTION:
@@ -567,7 +572,6 @@ BOOL CtrlHandlerRoutine(DWORD dwCtrlType)
 //
 INT _tmain(INT argc, _TCHAR* argv[])
 {
-	SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandlerRoutine, TRUE);
     Dibf dibf;
     dibf.start(argc, argv);
     return 0;

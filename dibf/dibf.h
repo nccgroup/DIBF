@@ -15,6 +15,7 @@ private:
     tstring deviceName;
     BOOL gotDeviceName;
     vector<IoctlDef> ioctls;
+    map<DWORD, ULONG> returnCodes;
     // Functions
     BOOL readAndValidateCommandLineUlong(LPTSTR, ULONG, ULONG, PULONG, BOOL);
     BOOL DoAllBruteForce(DWORD, DWORD, BOOL);
@@ -22,6 +23,8 @@ private:
     BOOL BruteForceBufferSizes(HANDLE);
     BOOL ReadBruteforceResult();
     BOOL WriteBruteforceResult();
+    BOOL SmartBruteCheck(DWORD);
+    static BOOL __stdcall BruteforceCtrlHandler(DWORD);
     VOID FuzzIOCTLs(DWORD, ULONG, PULONG, ULONG, ULONG);
     VOID usage(void);
 };

@@ -55,6 +55,7 @@ BOOL IoRequest::sendRequest(BOOL async, DWORD &lastError)
     DWORD dwBytes;
 
     bResult = DeviceIoControl(hDev, iocode, inBuf.data(), getInputBufferLength(), outBuf.data(), getOutputBufferLength(), &dwBytes, async ? &overlp : NULL);
+    bResult = 0; //Temporary hack while we make something smarter to handle false positives
     if(!bResult) {
         lastError = GetLastError();
     }
