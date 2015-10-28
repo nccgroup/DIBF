@@ -104,11 +104,11 @@ BOOL IoRequest::testSendForValidRequest(BOOL deep, DWORD & lastError)
     if(bResult) {
         FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM|FORMAT_MESSAGE_ALLOCATE_BUFFER, 0, lastError, 0, (LPTSTR)&errormessage, 4, NULL);
         if(errormessage) {
-            TPRINT(VERBOSITY_INFO, _T("Found IOCTL: %#.8x failed with error %#.8x - %s"), iocode, lastError, errormessage);
+            TPRINT(VERBOSITY_ALL, _T("Found IOCTL: %#.8x failed with error %#.8x - %s"), iocode, lastError, errormessage);
             LocalFree(errormessage);
         }
         else {
-            TPRINT(VERBOSITY_INFO, _T("Found IOCTL: %#.8x failed with error %#.8x\n"), iocode, lastError);
+            TPRINT(VERBOSITY_ALL, _T("Found IOCTL: %#.8x failed with error %#.8x\n"), iocode, lastError);
         }
     }
     return bResult;

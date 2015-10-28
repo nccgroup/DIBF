@@ -256,7 +256,7 @@ BOOL Dibf::SmartBruteCheck(HANDLE hDevice, DWORD dwIOCTLStart, DWORD dwIOCTLEnd,
     DWORD dwIOCTL, lastError, dwIOCTLIndex = 0;
     IoRequest ioRequest(hDevice);  // This unique request gets reused iteratively
 
-    TPRINT(VERBOSITY_DEFAULT, _T("Starting Smart Error Handling\n"))
+    TPRINT(VERBOSITY_INFO, _T("Starting Smart Error Handling\n"))
     for (dwIOCTL = dwIOCTLStart; dwIOCTL <= dwIOCTLEnd; dwIOCTL++) {
         if (dwIOCTL - dwIOCTLStart > 5000) 
         {
@@ -268,13 +268,13 @@ BOOL Dibf::SmartBruteCheck(HANDLE hDevice, DWORD dwIOCTLStart, DWORD dwIOCTLEnd,
         {
             if (++returnMap[lastError] == 50)
             {
-                TPRINT(VERBOSITY_DEFAULT, _T("Adding error to banned list: %#.8x\n"), lastError)
+                TPRINT(VERBOSITY_INFO, _T("Adding error to banned list: %#.8x\n"), lastError)
                     bannedErrors.resize(dwIOCTLIndex + 1);
                 bannedErrors[dwIOCTLIndex++] = lastError;
             }
         }
     }
-    TPRINT(VERBOSITY_DEFAULT, _T("Smart error handling complete\n"))
+    TPRINT(VERBOSITY_INFO, _T("Smart error handling complete\n"))
     return TRUE;
 }
 
@@ -322,14 +322,17 @@ BOOL Dibf::BruteForceIOCTLs(HANDLE hDevice, DWORD dwIOCTLStart, DWORD dwIOCTLEnd
             }
         }
         if(dwIOCTL % 0x010000 == 0) {
-            TPRINT(VERBOSITY_DEFAULT, _T("Current iocode: %#.8x (found %u ioctls so far)\n"), dwIOCTL, dwIOCTLIndex);
+            TPRINT(VERBOSITY_INFO, _T("Current iocode: %#.8x (found %u ioctls so far)\n"), dwIOCTL, dwIOCTLIndex);
         }
         if (userCtrlBreak)
         {
             break;
         }
     }
-    TPRINT(VERBOSITY_ALL, _T("Found %u ioctls\n"), dwIOCTLIndex);
+    TPRINT(VERBOSITY_INFO, _T("Found %u ioctls\n"), dwIOCTLIndex);
+    for (IoctlDef iodef : ioctls) {
+        TPRINT(VERBOSITY_INFO, _T("IOCTL Found: %#.8x\n"), iodef.dwIOCTL);
+    }
     return dwIOCTLIndex!=0;
 }
 
@@ -375,6 +378,10 @@ BOOL Dibf::BruteForceBufferSizes(HANDLE hDevice)
             }
             TPRINT(VERBOSITY_ALL, _T(" Found upper size edge at %d bytes\n"), dwCurrentSize);
             iodef.dwUpperSize = dwCurrentSize;
+        }
+        if (userCtrlBreak)
+        {
+            break;
         }
     } // while
     return bResult;
