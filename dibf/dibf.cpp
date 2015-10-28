@@ -354,7 +354,7 @@ BOOL Dibf::BruteForceBufferSizes(HANDLE hDevice)
     BOOL bResult=TRUE;
     DWORD dwCurrentSize;
     IoRequest ioRequest(hDevice);  // This unique request gets reused iteratively
-
+    userCtrlBreak = FALSE; // Re-set this in case they quit the brute iocode phase but still want buf sizes
     for(IoctlDef &iodef : ioctls) {
         TPRINT(VERBOSITY_INFO, _T(" Working on IOCTL %#.8x\n"), iodef.dwIOCTL);
         // Find lower size edge
