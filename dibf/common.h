@@ -28,6 +28,9 @@
 #define START_IOCTL_VALUE 0x00100000
 #define END_IOCTL_VALUE 0xfffffffe
 #define MAX_BUFSIZE 8192 // 8k
+// Smart bruteforcing error code checks
+#define TOTAL_ERROR_CHECKS 10000
+#define BAN_THRESHOLD 100
 // Ioctl info storage
 #define MAX_IOCTLS 512
 // Fuzzing stages

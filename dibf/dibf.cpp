@@ -262,25 +262,32 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
     return 0;
 }
 
+//DESCRIPTION:
+// This function tests for valid requests and bans potentially bogus error codes from
+// being counted as successful returns during the bruteforce stage.
+//
+//INPUT:
+// hDevice - Handle to device object.
+// dwIOCTLStart - Where to start IOCTL codes
+// dwIOCTLEnd - Where to end IOCTL codes
+// bDeepBruteForce - Boolean telling us if we are doing the deep bruteforce or not.
+//
+//OUTPUT:
+// Always returns true.
 BOOL Dibf::SmartBruteCheck(HANDLE hDevice, DWORD dwIOCTLStart, DWORD dwIOCTLEnd, BOOL bDeepBruteForce)
 {
-    // Iterate through 5k guesses
-    // Map every Error code that gets returned
-    // If count == 50, add to banned list
-    // TODO: Make variables for guesses etc. Fix up message output stuff.
-
     DWORD dwIOCTL, lastError, dwIOCTLIndex = 0;
     IoRequest ioRequest(hDevice);  // This unique request gets reused iteratively
 
     TPRINT(VERBOSITY_INFO, _T("Starting Smart Error Handling\n"))
     for (dwIOCTL = dwIOCTLStart; dwIOCTL <= dwIOCTLEnd; dwIOCTL++) {
-        if (dwIOCTL - dwIOCTLStart > 5000){
+        if (dwIOCTL - dwIOCTLStart > TOTAL_ERROR_CHECKS){
             break;
         }
         lastError = 0;
         ioRequest.SetIoCode(dwIOCTL);
         if (ioRequest.testSendForValidRequest(bDeepBruteForce, lastError)){
-            if (++returnMap[lastError] == 50){
+            if (++returnMap[lastError] == BAN_THRESHOLD){
                 TPRINT(VERBOSITY_INFO, _T("Adding error to banned list: %#.8x\n"), lastError)
                     bannedErrors.resize(dwIOCTLIndex + 1);
                 bannedErrors[dwIOCTLIndex++] = lastError;
@@ -304,13 +311,13 @@ BOOL Dibf::IsBanned(DWORD lastError)
 }
 
 //DESCRIPTION:
-// This function fills the pIOCTLStorage array with valid IOCTLs found by CallDeviceIoControl().
+// This function fills the ioctls array with valid IOCTLs found by CallDeviceIoControl().
 //
 //INPUT:
 // hDevice - Handle to device object.
-// pIOCTLStorage - Pointer to array of IOCTL_STORAGE structures.
+// dwIOCTLStart - Where to start IOCTL codes
+// dwIOCTLEnd - Where to end IOCTL codes
 // bDeepBruteForce - Boolean telling us if we are doing the deep bruteforce or not.
-// bVerbose - Boolean telling us if we want verbose output or not.
 //
 //OUTPUT:
 // FALSE if no ioctl was found, TRUE otherwise
