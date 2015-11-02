@@ -11,6 +11,7 @@ This tool encompasses two distinct features. It guesses the IOCTL values that th
 	Options:
 		-h You're looking at it
  		-i Ignore previous logfile - THIS WILL OVERWRITE IT
+ 		-l Specify custom logfile name to read from/write to (default dibf-bf-results.txt)
  		-d Deep IOCTL bruteforce (8-9 times slower)
  		-v [0-3] Verbosity level
  		-s [ioctl] Start IOCTL value
@@ -34,7 +35,7 @@ This tool encompasses two distinct features. It guesses the IOCTL values that th
  		- The bruteforce stage will generate a file named "dibf-bf-results.txt"
    		  in the same directory as the executable. If dibf is started with no
    		  arguments, it will look for this file and start the fuzzer with the values
-   		  from it.
+   		  from it The -l flag can be used to specify a custom results file name..
  		- If not specified otherwise, command line arguments can be passed as decimal or hex (prefix with "0x")
  		- CTRL-C interrupts the current stage and moves to the next if any. Current statistics will be displayed.
  		- The statistics are cumulative.
