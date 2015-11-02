@@ -35,7 +35,7 @@ This tool encompasses two distinct features. It guesses the IOCTL values that th
  		- The bruteforce stage will generate a file named "dibf-bf-results.txt"
    		  in the same directory as the executable. If dibf is started with no
    		  arguments, it will look for this file and start the fuzzer with the values
-   		  from it The -l flag can be used to specify a custom results file name..
+   		  from it The -l flag can be used to specify a custom results file name.
  		- If not specified otherwise, command line arguments can be passed as decimal or hex (prefix with "0x")
  		- CTRL-C interrupts the current stage and moves to the next if any. Current statistics will be displayed.
  		- The statistics are cumulative.
