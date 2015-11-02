@@ -33,6 +33,9 @@
 #define BAN_THRESHOLD 100
 // Ioctl info storage
 #define MAX_IOCTLS 512
+// Specify how often to shove bufsize into buffer during random fuzzing 
+// Odds of length getting put in buf is !(rand() % SHOVE_LENGTH_FREQ)
+#define SHOVE_LENGTH_FREQ 100
 // Fuzzing stages
 #define DWORD_FUZZER 1
 #define RANDOM_FUZZER 2
