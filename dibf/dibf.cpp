@@ -93,6 +93,7 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
     BOOL bDeepBruteForce=FALSE, bIoctls=FALSE, validUsage=TRUE, bIgnoreFile=FALSE;
     DWORD dwIOCTLStart=START_IOCTL_VALUE, dwIOCTLEnd=END_IOCTL_VALUE, dwFuzzStage=0x3;
     ULONG maxThreads=0, timeLimits[3]={INFINITE, INFINITE,INFINITE}, cancelRate=CANCEL_RATE, maxPending=MAX_PENDING;
+    gotFileName = FALSE;
     LONG i=1;
 
     // Process options
@@ -194,6 +195,18 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
                 validUsage = FALSE;
                 bIgnoreFile = TRUE;
                 break;
+            case L'l':
+            case L'L':
+                if(i<argc-1 && !gotFileName) {
+                    fileName.append(tstring(argv[i+1]));
+                    gotFileName = !fileName.empty();
+                    i++;
+                }
+                else {
+                    TPRINT(VERBOSITY_DEFAULT, _T("Parsing error for flag -%c.\n"), argv[i][1]);
+                    validUsage = FALSE;
+                }
+                break;
             default:
                 validUsage = FALSE;
                 break;
@@ -212,6 +225,9 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
     } // for
     if(validUsage) {
         // If the only fuzzer is NP fuzzer, skip all ioctl defs related operations
+        if (!gotFileName) {
+            fileName.append(tstring(L"dibf-bf-results.txt")); // Set default name if not specified
+        }
         if(dwFuzzStage!=NP_FUZZER) {
             // Skip reading from file if -i or if only NP fuzzing
             if(!bIgnoreFile) {
@@ -258,16 +274,13 @@ BOOL Dibf::SmartBruteCheck(HANDLE hDevice, DWORD dwIOCTLStart, DWORD dwIOCTLEnd,
 
     TPRINT(VERBOSITY_INFO, _T("Starting Smart Error Handling\n"))
     for (dwIOCTL = dwIOCTLStart; dwIOCTL <= dwIOCTLEnd; dwIOCTL++) {
-        if (dwIOCTL - dwIOCTLStart > 5000) 
-        {
+        if (dwIOCTL - dwIOCTLStart > 5000){
             break;
         }
         lastError = 0;
         ioRequest.SetIoCode(dwIOCTL);
-        if (ioRequest.testSendForValidRequest(bDeepBruteForce, lastError))
-        {
-            if (++returnMap[lastError] == 50)
-            {
+        if (ioRequest.testSendForValidRequest(bDeepBruteForce, lastError)){
+            if (++returnMap[lastError] == 50){
                 TPRINT(VERBOSITY_INFO, _T("Adding error to banned list: %#.8x\n"), lastError)
                     bannedErrors.resize(dwIOCTLIndex + 1);
                 bannedErrors[dwIOCTLIndex++] = lastError;
@@ -281,12 +294,10 @@ BOOL Dibf::SmartBruteCheck(HANDLE hDevice, DWORD dwIOCTLStart, DWORD dwIOCTLEnd,
 BOOL Dibf::IsBanned(DWORD lastError)
 {
     BOOL banned = FALSE;
-    if (std::find(bannedErrors.begin(), bannedErrors.end(), lastError) != bannedErrors.end())
-    {
+    if (std::find(bannedErrors.begin(), bannedErrors.end(), lastError) != bannedErrors.end()){
         banned = TRUE;
     }
-    else
-    {
+    else{
         banned = FALSE;
     }
     return banned;
@@ -365,22 +376,21 @@ BOOL Dibf::BruteForceBufferSizes(HANDLE hDevice)
         }
         // If an IOCTL either requires a buffer larger than supported or performs a strict check on the outgoing buffer
         if(dwCurrentSize==MAX_BUFSIZE) {
-            TPRINT(VERBOSITY_ALL, _T(" Failed to find lower edge. Skipping.\n"));
+            TPRINT(VERBOSITY_INFO, _T(" Failed to find lower edge. Skipping.\n"));
             iodef.dwLowerSize = 0;
             iodef.dwUpperSize = MAX_BUFSIZE;
         }
         else {
-            TPRINT(VERBOSITY_ALL, _T(" Found lower size edge at %d bytes\n"), dwCurrentSize);
+            TPRINT(VERBOSITY_INFO, _T(" Found lower size edge at %d bytes\n"), dwCurrentSize);
             iodef.dwLowerSize = dwCurrentSize;
             // Find upper size edge
             while((dwCurrentSize<MAX_BUFSIZE) && ioRequest.testSendForValidBufferSize(dwCurrentSize)) {
                 dwCurrentSize++;
             }
-            TPRINT(VERBOSITY_ALL, _T(" Found upper size edge at %d bytes\n"), dwCurrentSize);
+            TPRINT(VERBOSITY_INFO, _T(" Found upper size edge at %d bytes\n"), dwCurrentSize);
             iodef.dwUpperSize = dwCurrentSize;
         }
-        if (userCtrlBreak)
-        {
+        if (userCtrlBreak){
             break;
         }
     } // while
@@ -403,24 +413,24 @@ BOOL Dibf::WriteBruteforceResult()
     ofstream logFile;
 
     // Open the log file
-    logFile.open(DIBF_BF_LOG_FILE);
+    logFile.open((LPCTSTR)fileName);
     if(logFile.good()) {
         logFile << (string&)deviceName << "\n";
         // Write all found ioctls
         for(IoctlDef iodef : ioctls) {
             logFile << std::hex << iodef.dwIOCTL << " " << iodef.dwLowerSize << " " << iodef.dwUpperSize << "\n";
         }
-        TPRINT(VERBOSITY_INFO, _T("Successfully written IOCTLs data to log file %s\n"), DIBF_BF_LOG_FILE);
+        TPRINT(VERBOSITY_INFO, _T("Successfully written IOCTLs data to log file %s\n"), (LPCTSTR)fileName);
         logFile.close();
     }
     else {
-        TPRINT(VERBOSITY_ERROR, _T("Error creating/opening log file %s\n"), DIBF_BF_LOG_FILE);
+        TPRINT(VERBOSITY_ERROR, _T("Error creating/opening log file %s\n"), (LPCTSTR)fileName);
     }
     return bResult;
 }
 
 //DESCRIPTION:
-// Reads all bruteforce resuls from a log file (dibf-bf-results.txt).
+// Reads all bruteforce resuls from a log file (dibf-bf-results.txt by default).
 //OUTPUT:
 // Populates deviceName, IOCTLStorage and returns a bool indicating
 // if the read was successful or not.
@@ -432,7 +442,7 @@ BOOL Dibf::ReadBruteforceResult()
     tstring line, deviceNameFromFile;
 
     // Open the log file
-    logFile.open(DIBF_BF_LOG_FILE);
+    logFile.open((LPCTSTR)fileName);
     if(logFile.good()) {
         // First, read the device name
         getline(logFile, (string&)deviceNameFromFile);
@@ -440,7 +450,7 @@ BOOL Dibf::ReadBruteforceResult()
             // Device name mismatch between file and command line
             if(gotDeviceName) {
                 if(deviceNameFromFile!=deviceName) {
-                    TPRINT(VERBOSITY_ERROR, _T("Device name from command line (%s) and from existing %s file (%s) differ, aborting\n"), (LPCTSTR)deviceName, DIBF_BF_LOG_FILE, (LPCTSTR)deviceNameFromFile);
+                    TPRINT(VERBOSITY_ERROR, _T("Device name from command line (%s) and from existing %s file (%s) differ, aborting\n"), (LPCTSTR)deviceName, (LPCTSTR)fileName, (LPCTSTR)deviceNameFromFile);
                     gotDeviceName = FALSE;
                 }
             }
@@ -460,19 +470,19 @@ BOOL Dibf::ReadBruteforceResult()
                         TPRINT(VERBOSITY_ALL, _T("Loaded IOCTL %#.8x [%u, %u]\n"), iodef.dwIOCTL, iodef.dwLowerSize, iodef.dwUpperSize);
                     }
                 }
-                TPRINT(VERBOSITY_DEFAULT, _T("Found and successfully loaded values from %s\n"), DIBF_BF_LOG_FILE);
+                TPRINT(VERBOSITY_DEFAULT, _T("Found and successfully loaded values from %s\n"), (LPCTSTR)fileName);
                 TPRINT(VERBOSITY_INFO, _T(" Device name: %s\n"), (LPCTSTR)deviceName);
                 TPRINT(VERBOSITY_INFO, _T(" Number of IOCTLs: %d\n"), ioctls.size());
                 bResult = TRUE;
             }
         }
         else {
-            TPRINT(VERBOSITY_ERROR, _T("Reading device name from log file %s failed.\n"), DIBF_BF_LOG_FILE);
+            TPRINT(VERBOSITY_ERROR, _T("Reading device name from log file %s failed.\n"), (LPCTSTR)fileName);
         }
         logFile.close();
     }
     else {
-        TPRINT(VERBOSITY_ERROR, _T("Failed to open Log file %s\n"), DIBF_BF_LOG_FILE);
+        TPRINT(VERBOSITY_ERROR, _T("Failed to open Log file %s\n"), (LPCTSTR)fileName);
     }
     return bResult;
 }
@@ -567,6 +577,7 @@ VOID Dibf::usage(VOID)
     TPRINT(VERBOSITY_DEFAULT, _T("Options:\n"));
     TPRINT(VERBOSITY_DEFAULT, _T(" -h You're looking at it\n"));
     TPRINT(VERBOSITY_DEFAULT, _T(" -i Ignore (OVERWRITE) previous logfile\n"));
+    TPRINT(VERBOSITY_DEFAULT, _T(" -l Specify custom logfile name to read from/write to (default dibf-bf-results.txt)\n"));
     TPRINT(VERBOSITY_DEFAULT, _T(" -d Deep IOCTL bruteforce (8-9 times slower)\n"));
     TPRINT(VERBOSITY_DEFAULT, _T(" -v [0-3] Verbosity level\n"));
     TPRINT(VERBOSITY_DEFAULT, _T(" -s [ioctl] Start IOCTL value\n"));
@@ -590,7 +601,7 @@ VOID Dibf::usage(VOID)
     TPRINT(VERBOSITY_DEFAULT, _T(" - The bruteforce stage will generate a file named \"dibf-bf-results.txt\"\n"));
     TPRINT(VERBOSITY_DEFAULT, _T("   in the same directory as the executable. If dibf is started with no\n"));
     TPRINT(VERBOSITY_DEFAULT, _T("   arguments, it will look for this file and start the fuzzer with the values\n"));
-    TPRINT(VERBOSITY_DEFAULT, _T("   from it.\n"));
+    TPRINT(VERBOSITY_DEFAULT, _T("   from it. The -l flag can be used to specify a custom results file name.\n"));
     TPRINT(VERBOSITY_DEFAULT, _T(" - If not specified otherwise, command line arguments can be passed as decimal or hex (prefix with \"0x\")\n"));
     TPRINT(VERBOSITY_DEFAULT, _T(" - CTRL-C interrupts the current stage and moves to the next if any. Current statistics will be displayed.\n"));
     TPRINT(VERBOSITY_DEFAULT, _T(" - The statistics are cumulative.\n"));
@@ -599,9 +610,8 @@ VOID Dibf::usage(VOID)
 
 BOOL __stdcall Dibf::BruteforceCtrlHandler(DWORD fdwCtrlType)
 {
-    if (fdwCtrlType == CTRL_C_EVENT || fdwCtrlType == CTRL_BREAK_EVENT)
-    {
-        TPRINT(VERBOSITY_DEFAULT, _T("CTRL_C_EVENT Detected. Exiting BruteForce."));
+    if (fdwCtrlType == CTRL_C_EVENT || fdwCtrlType == CTRL_BREAK_EVENT){
+        TPRINT(VERBOSITY_DEFAULT, _T("CTRL_C_EVENT Detected. Exiting BruteForce.\n"));
         userCtrlBreak = TRUE;
     }
     else {

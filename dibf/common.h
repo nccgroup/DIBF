@@ -30,7 +30,6 @@
 #define MAX_BUFSIZE 8192 // 8k
 // Ioctl info storage
 #define MAX_IOCTLS 512
-#define DIBF_BF_LOG_FILE _T("dibf-bf-results.txt")
 // Fuzzing stages
 #define DWORD_FUZZER 1
 #define RANDOM_FUZZER 2

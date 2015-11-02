@@ -13,7 +13,9 @@ public:
 private:
     // Vars
     tstring deviceName;
+    tstring fileName;
     BOOL gotDeviceName;
+    BOOL gotFileName;
     vector<IoctlDef> ioctls;
     vector<DWORD> bannedErrors;
     map<DWORD, ULONG> returnMap;
