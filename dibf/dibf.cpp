@@ -333,14 +333,15 @@ BOOL Dibf::BruteForceIOCTLs(HANDLE hDevice, DWORD dwIOCTLStart, DWORD dwIOCTLEnd
             if(dwIOCTLIndex<MAX_IOCTLS) {
                 ioctls.resize(dwIOCTLIndex+1);
                 ioctls[dwIOCTLIndex++].dwIOCTL = dwIOCTL;
+				TPRINT(VERBOSITY_INFO, _T("Found IOCTL: %#.8x\n"), dwIOCTL);
             }
             else {
-                TPRINT(VERBOSITY_ERROR, _T("Found IOCTL but out of storage space, stopping bruteforce\n"));
+                TPRINT(VERBOSITY_ERROR, _T("Found IOCTL but out of storage space, stopping bruteforce at %#.8x\n"), dwIOCTL);
                 return FALSE;
             }
         }
         if(dwIOCTL % 0x010000 == 0) {
-            TPRINT(VERBOSITY_INFO, _T("Current iocode: %#.8x (found %u ioctls so far)\n"), dwIOCTL, dwIOCTLIndex);
+			TPRINT(VERBOSITY_INFO, _T("Current iocode: %#.8x (found %u ioctls in %s so far)\n"), dwIOCTL, dwIOCTLIndex, deviceName);
         }
         if (userCtrlBreak)
         {
