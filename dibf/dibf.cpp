@@ -341,7 +341,7 @@ BOOL Dibf::BruteForceIOCTLs(HANDLE hDevice, DWORD dwIOCTLStart, DWORD dwIOCTLEnd
             }
         }
         if(dwIOCTL % 0x010000 == 0) {
-			TPRINT(VERBOSITY_INFO, _T("Current iocode: %#.8x (found %u ioctls in %s so far)\n"), dwIOCTL, dwIOCTLIndex, deviceName);
+			TPRINT(VERBOSITY_INFO, _T("Current iocode: %#.8x (found-ioctl count of %u in %s so far)\n"), dwIOCTL, dwIOCTLIndex, (LPCTSTR)deviceName);
         }
         if (userCtrlBreak)
         {
