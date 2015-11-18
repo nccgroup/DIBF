@@ -131,11 +131,11 @@ VOID Fuzzer::Tracker::Stats::print()
     fflush(stdout);
     // Print summary
     TPRINT(VERBOSITY_DEFAULT, _T("---------------------------------------\n"));
-    TPRINT(VERBOSITY_DEFAULT, _T("Sent Requests : %d\n"), SentRequests);
-    TPRINT(VERBOSITY_DEFAULT, _T("Completed Requests : %d (%d sync, %d async)\n"), CompletedRequests, SynchronousRequests, ASyncRequests);
-    TPRINT(VERBOSITY_DEFAULT, _T("SuccessfulRequests : %d\n"), SuccessfulRequests);
-    TPRINT(VERBOSITY_DEFAULT, _T("FailedRequests : %d\n"), FailedRequests);
-    TPRINT(VERBOSITY_DEFAULT, _T("CanceledRequests : %d\n"), CanceledRequests);
+    TPRINT(VERBOSITY_DEFAULT, _T("Sent Requests : %u\n"), SentRequests);
+    TPRINT(VERBOSITY_DEFAULT, _T("Completed Requests : %u (%u sync, %u async)\n"), CompletedRequests, SynchronousRequests, ASyncRequests);
+    TPRINT(VERBOSITY_DEFAULT, _T("SuccessfulRequests : %u\n"), SuccessfulRequests);
+    TPRINT(VERBOSITY_DEFAULT, _T("FailedRequests : %u\n"), FailedRequests);
+    TPRINT(VERBOSITY_DEFAULT, _T("CanceledRequests : %u\n"), CanceledRequests);
     TPRINT(VERBOSITY_INFO, _T("----\n"));
     TPRINT(VERBOSITY_INFO, _T("Consistent Results: %s\n"), SuccessfulRequests
         +FailedRequests
