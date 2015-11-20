@@ -287,7 +287,7 @@ BOOL Dibf::SmartBruteCheck(HANDLE hDevice, DWORD dwIOCTLStart, DWORD dwIOCTLEnd,
         lastError = 0;
         ioRequest.SetIoCode(dwIOCTL);
         if (ioRequest.testSendForValidRequest(bDeepBruteForce, lastError)){
-            if (++returnMap[lastError] == BAN_THRESHOLD){
+            if (++returnMap[lastError] == MAX_IOCTLS){
                 TPRINT(VERBOSITY_INFO, _T("Adding error to banned list: %#.8x\n"), lastError)
                     bannedErrors.resize(dwIOCTLIndex + 1);
                 bannedErrors[dwIOCTLIndex++] = lastError;
