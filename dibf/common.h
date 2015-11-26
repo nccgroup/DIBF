@@ -25,7 +25,7 @@
 #endif
 
 // Ioctl guessing vars
-#define START_IOCTL_VALUE 0x00100000
+#define START_IOCTL_VALUE 0x0
 #define END_IOCTL_VALUE 0xfffffffe
 #define MAX_BUFSIZE 8192 // 8k
 // Smart bruteforcing error code checks
