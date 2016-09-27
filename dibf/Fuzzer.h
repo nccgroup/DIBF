@@ -27,15 +27,15 @@ public:
         class Stats {
         public:
             VOID print();
-            volatile long SentRequests;
-            volatile long CompletedRequests;
-            volatile long SynchronousRequests;
-            volatile long ASyncRequests;
-            volatile long SuccessfulRequests;
-            volatile long FailedRequests;
-            volatile long CanceledRequests;
-            volatile long PendingRequests;
-            volatile long AllocatedRequests;
+            volatile unsigned long long SentRequests;
+            volatile unsigned long long CompletedRequests;
+            volatile unsigned long long SynchronousRequests;
+            volatile unsigned long long ASyncRequests;
+            volatile unsigned long long SuccessfulRequests;
+            volatile unsigned long long FailedRequests;
+            volatile unsigned long long CanceledRequests;
+            volatile unsigned long long PendingRequests;
+            volatile unsigned long long AllocatedRequests;
         } stats;
     } tracker;
 protected:

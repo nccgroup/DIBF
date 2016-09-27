@@ -14,6 +14,8 @@
 #include <Windows.h>
 #include <time.h>
 // C++
+#include <map>
+#include <algorithm>
 #include <random>
 #include <string>
 #include <vector>

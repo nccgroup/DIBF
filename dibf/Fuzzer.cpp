@@ -131,11 +131,11 @@ VOID Fuzzer::Tracker::Stats::print()
     fflush(stdout);
     // Print summary
     TPRINT(VERBOSITY_DEFAULT, _T("---------------------------------------\n"));
-    TPRINT(VERBOSITY_DEFAULT, _T("Sent Requests : %d\n"), SentRequests);
-    TPRINT(VERBOSITY_DEFAULT, _T("Completed Requests : %d (%d sync, %d async)\n"), CompletedRequests, SynchronousRequests, ASyncRequests);
-    TPRINT(VERBOSITY_DEFAULT, _T("SuccessfulRequests : %d\n"), SuccessfulRequests);
-    TPRINT(VERBOSITY_DEFAULT, _T("FailedRequests : %d\n"), FailedRequests);
-    TPRINT(VERBOSITY_DEFAULT, _T("CanceledRequests : %d\n"), CanceledRequests);
+    TPRINT(VERBOSITY_DEFAULT, _T("Sent Requests : %llu\n"), SentRequests);
+    TPRINT(VERBOSITY_DEFAULT, _T("Completed Requests : %llu (%llu sync, %llu async)\n"), CompletedRequests, SynchronousRequests, ASyncRequests);
+    TPRINT(VERBOSITY_DEFAULT, _T("SuccessfulRequests : %llu\n"), SuccessfulRequests);
+    TPRINT(VERBOSITY_DEFAULT, _T("FailedRequests : %llu\n"), FailedRequests);
+    TPRINT(VERBOSITY_DEFAULT, _T("CanceledRequests : %llu\n"), CanceledRequests);
     TPRINT(VERBOSITY_INFO, _T("----\n"));
     TPRINT(VERBOSITY_INFO, _T("Consistent Results: %s\n"), SuccessfulRequests
         +FailedRequests
@@ -146,7 +146,7 @@ VOID Fuzzer::Tracker::Stats::print()
         TPRINT(VERBOSITY_ALL, _T("Cleanup completed, no request still allocated nor pending\n"));
     }
     else {
-        TPRINT(VERBOSITY_ALL, _T("Cleanup incomplete, %u request%s still allocated, %u pending\n"), AllocatedRequests, AllocatedRequests>1?_T("s"):_T(""), PendingRequests);
+        TPRINT(VERBOSITY_ALL, _T("Cleanup incomplete, %llu request%s still allocated, %llu pending\n"), AllocatedRequests, AllocatedRequests>1?_T("s"):_T(""), PendingRequests);
     }
     TPRINT(VERBOSITY_ALL, _T("----\n"));
     printDateTime(TRUE);

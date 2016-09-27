@@ -56,6 +56,10 @@ BOOL Dumbfuzzer::GetRandomIoctlAndBuffer(DWORD &iocode, vector<UCHAR> &output, m
     for(INT j=0; i<(INT)size; i++,j+=8) {
         output[i] = (UCHAR)((r>>j)&0xff);
     }
+    // Every once in awhile, shove the size in the first DWORD of buffer
+    if (!(r % SHOVE_LENGTH_FREQ) && size > sizeof(DWORD)) {
+        *(PDWORD)(&(output)[0]) = size;
+    }
     // Set code
     iocode = ioStore[ioctlIndex].dwIOCTL;
     bResult = TRUE;

@@ -25,12 +25,16 @@
 #endif
 
 // Ioctl guessing vars
-#define START_IOCTL_VALUE 0x00100000
+#define START_IOCTL_VALUE 0x0
 #define END_IOCTL_VALUE 0xfffffffe
 #define MAX_BUFSIZE 8192 // 8k
+// Smart bruteforcing error code checks
+#define TOTAL_ERROR_CHECKS 250000
 // Ioctl info storage
 #define MAX_IOCTLS 512
-#define DIBF_BF_LOG_FILE _T("dibf-bf-results.txt")
+// Specify how often to shove bufsize into buffer during random fuzzing
+// Odds of length getting put in buf is !(rand() % SHOVE_LENGTH_FREQ)
+#define SHOVE_LENGTH_FREQ 100
 // Fuzzing stages
 #define DWORD_FUZZER 1
 #define RANDOM_FUZZER 2

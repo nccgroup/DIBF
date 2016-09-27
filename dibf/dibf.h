@@ -13,8 +13,12 @@ public:
 private:
     // Vars
     tstring deviceName;
+    tstring fileName;
     BOOL gotDeviceName;
+    BOOL gotFileName;
     vector<IoctlDef> ioctls;
+    vector<DWORD> bannedErrors;
+    map<DWORD, ULONG> returnMap;
     // Functions
     BOOL readAndValidateCommandLineUlong(LPTSTR, ULONG, ULONG, PULONG, BOOL);
     BOOL DoAllBruteForce(DWORD, DWORD, BOOL);
@@ -22,6 +26,9 @@ private:
     BOOL BruteForceBufferSizes(HANDLE);
     BOOL ReadBruteforceResult();
     BOOL WriteBruteforceResult();
+    BOOL SmartBruteCheck(HANDLE, DWORD, DWORD, BOOL);
+    BOOL IsBanned(DWORD);
+    static BOOL __stdcall BruteforceCtrlHandler(DWORD);
     VOID FuzzIOCTLs(DWORD, ULONG, PULONG, ULONG, ULONG);
     VOID usage(void);
 };

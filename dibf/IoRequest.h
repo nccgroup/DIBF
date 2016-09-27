@@ -4,6 +4,7 @@
 #include "FuzzingProvider.h"
 
 #define MAX_IOCTLS 512
+#define MAX_CODES 100   // Number of IOCTL return codes of same value before blacklisting and discarding
 #define DEEP_BF_MAX ((DWORD)32)
 #define DEFAULT_OUTLEN ((DWORD)256)
 
@@ -20,7 +21,7 @@ public:
     OVERLAPPED overlp; // oop?
     DWORD GetIoCode() {return iocode;}
     VOID SetIoCode(DWORD iocode) {this->iocode=iocode;}
-    BOOL testSendForValidRequest(BOOL);
+    BOOL testSendForValidRequest(BOOL, DWORD&);
     BOOL testSendForValidBufferSize(DWORD);
     VOID reset();
     BOOL sendSync();
