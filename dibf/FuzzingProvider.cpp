@@ -46,7 +46,7 @@ BOOL Dumbfuzzer::GetRandomIoctlAndBuffer(DWORD &iocode, vector<UCHAR> &output, m
         size = ioStore[ioctlIndex].dwLowerSize+(HIGH_WORD(r)%(ioStore[ioctlIndex].dwUpperSize-ioStore[ioctlIndex].dwLowerSize));
     }
     // If the sizes are equal, take the upper size
-    else if(ioStore[ioctlIndex].dwUpperSize == ioStore[ioctlIndex].dwLowerSize){
+    else if(ioStore[ioctlIndex].dwUpperSize == ioStore[ioctlIndex].dwLowerSize) {
         size = ioStore[ioctlIndex].dwUpperSize;
     }
     output.resize(size);
